@@ -2,7 +2,8 @@
 
 export class Example_Aggregate {
   public Test(): boolean {
-
+    // Todo
+    return false;
   }
 
   /**
@@ -10,7 +11,7 @@ export class Example_Aggregate {
    */
   public Example_Sum(): number {
     let list = [1, 2, 3, 4, 5];
-    return list.Aggregate((a, i) => (a + i));
+    return list.Aggregate((a, i) => (a + i))!;
   }
 
   /**

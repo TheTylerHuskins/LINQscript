@@ -4,6 +4,7 @@ import { Dog, DogOwner } from "./Data";
 export class Example_SelectMany {
   public Test(): boolean {
     // Todo
+    return false;
   }
 
   public Example_2Dto1D(): Array<Dog> {

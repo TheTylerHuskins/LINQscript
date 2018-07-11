@@ -1,0 +1,21 @@
+{
+  "parse": {},
+  "compress": {
+    "inline": false,
+    "warnings": true
+  },
+  "mangle": {
+    "properties": {}
+  },
+  "output": {
+    "beautify": false,
+    "braces": false,
+    "max_line_len": false,
+    "semicolons": false
+  },
+  "sourceMap": {},
+  "nameCache": null,
+  "toplevel": false,
+  "ie8": false,
+  "warnings": true
+}

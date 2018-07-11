@@ -22,7 +22,7 @@ interface Array<T> {
    * @param seed The initial accumulator value.
    * @param resultSelector A function to transform the final accumulator value into the result value.
    */
-  Aggregate<TAccumulate, TResult>(this: Array<T>, func: (accumulator: TAccumulate, item: T) => TAccumulate, seed: TAccumulate, resultSelector: (accumulator: TAccumulate) => TResult): TResult;
+  Aggregate<TAccumulate, TResult>(this: Array<T>, func: (accumulator: TAccumulate, item: T) => TAccumulate, seed: TAccumulate, resultSelector: (accumulator?: TAccumulate) => TResult): TResult;
 
   /**
    * Projects each element of a sequence into a new form by incorporating the element's index.

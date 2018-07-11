@@ -63,5 +63,5 @@ export class DogOwner {
       new DogOwner("Derek", [dogs[5]])
     ]
   }
-  public constructor(public Name, public Dogs: Array<Dog>) { }
+  public constructor(public Name: string, public Dogs: Array<Dog>) { }
 }

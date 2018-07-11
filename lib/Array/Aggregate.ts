@@ -4,7 +4,7 @@ Array.prototype.Aggregate = function <T, TAccumulate, TResult>(
   this: Array<T>,
   func: (accumulator: TAccumulate, item: T) => TAccumulate,
   seed?: TAccumulate,
-  resultSelector?: (accumulator: TAccumulate) => TResult
+  resultSelector?: (accumulator?: TAccumulate) => TResult
 ): TResult | undefined {
 
   if (resultSelector === undefined) {
@@ -28,7 +28,7 @@ Array.prototype.Aggregate = function <T, TAccumulate, TResult>(
     }
 
     for (let ilen = this.length; idx < ilen; ++idx) {
-      accumulator = func(accumulator, this[idx]);
+      accumulator = func(accumulator!, this[idx]);
     }
   }
 
