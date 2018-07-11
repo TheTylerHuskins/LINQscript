@@ -2,20 +2,20 @@
   "parse": {},
   "compress": {
     "inline": false,
+    "keep_fnames": true,
+    "keep_fargs": true,
     "warnings": true
-  },
-  "mangle": {
-    "properties": {}
   },
   "output": {
     "beautify": false,
-    "braces": false,
+    "braces": true,
     "max_line_len": false,
     "semicolons": false
   },
   "sourceMap": {},
   "nameCache": null,
-  "toplevel": false,
+  "toplevel": true,
   "ie8": false,
-  "warnings": true
+  "warnings": true,
+  "keep_fnames": true
 }
