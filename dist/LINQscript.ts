@@ -1,7 +1,5 @@
 
 interface Array<T> {
-  Select<U>(selector: (item: T) => U): Array<U>;
-  SelectMany<U>(this: Array<Array<U>>): Array<U>;
   Distinct(): Array<T>;
   First(): T;
   FirstOrDefault(DefaultValue: T): T;
@@ -9,36 +7,6 @@ interface Array<T> {
   Any(callbackfn?: (item: T) => boolean): boolean;
   Take(amount: number): Array<T>;
 }
-
-/**
- * For each item in an array apply the Selector
- */
-Array.prototype.Select = function <T, U>(this: Array<T>, selector: (item: T) => U): Array<U> {
-  const accumulator: Array<U> = [];
-  this.forEach((item) => {
-    accumulator.push(selector(item));
-  });
-  return accumulator;
-};
-
-/**
- * Flatten a 2-D array into a 1-D Array
- */
-Array.prototype.SelectMany = function <U>(this: Array<Array<U>>): Array<U> {
-  const accumulator: Array<U> = [];
-  if (this.length === 0) {
-    return accumulator;
-  }
-  this.forEach((item) => {
-    if (Array.isArray(item)) {
-      accumulator.push(...item);
-    } else {
-      accumulator.push(item);
-    }
-  });
-
-  return accumulator;
-};
 
 /**
  * Remove Duplicates from the array
