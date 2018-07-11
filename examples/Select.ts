@@ -1,4 +1,4 @@
-import { Dog } from "./Dog";
+import { Dog } from "./Data";
 
 
 export class Example_Select {
