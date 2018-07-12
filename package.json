@@ -1,0 +1,33 @@
+{
+  "name": "linqscript",
+  "version": "1.0.0",
+  "description": "LINQ For Typescript",
+  "main": "index.js",
+  "types": "dist/index.d.ts",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "build": "tsc && uglifyjs-folder ./dist -o ./dist/index.min.js --pattern \"**/*.js,!**/*min.js,!examples/**\" --config-file \"./uglify.json\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheTylerHuskins/LINQscript.git"
+  },
+  "keywords": [
+    "LINQ"
+  ],
+  "author": "Tyler Huskins, Chris McGhee",
+  "license": "Unlicense",
+  "bugs": {
+    "url": "https://github.com/TheTylerHuskins/LINQscript/issues"
+  },
+  "homepage": "https://github.com/TheTylerHuskins/LINQscript#readme",
+  "devDependencies": {
+    "typescript": "^2.9.2",
+    "uglify-js": "^3.4.4",
+    "uglifyjs-folder": "^1.5.1"
+  },
+  "dependencies": {}
+}
