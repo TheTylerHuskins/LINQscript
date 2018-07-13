@@ -50,4 +50,14 @@ interface Array<T> {
      * @param amount amount of elements to select
      */
     Take(amount: number): Array<T>;
+    /**
+     * Returns the distinct elements of the array
+     */
+    Distinct(): Array<T>;
+    /**
+     * returns true if any of the elements in the array meet the callbackfn,
+     * if no callbackfn is given it returns true if their are elements in the array
+     * @param callbackfn
+     */
+    Any(callbackfn?: (item: T) => boolean): boolean;
 }
