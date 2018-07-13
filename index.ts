@@ -51,4 +51,10 @@ interface Array<T> {
  * @param this A sequence of values to project.
  */
   SelectMany<TResult>(this: Array<Array<TResult>>): Array<TResult>;
+
+  /**
+   * Creates a copy of the array with elements from the first element to the amount specified.
+   * @param amount amount of elements to select
+   */
+  Take(amount: number): Array<T>;
 }
