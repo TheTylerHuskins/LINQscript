@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsc && uglifyjs-folder ./dist -o ./dist/index.min.js --pattern \"**/*.js,!**/*min.js,!examples/**\" --config-file \"./uglify.json\"",
+    "watch": "tsc -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
