@@ -1,7 +1,31 @@
 
+
+/**
+ * An iterator result that includes the index
+ */
 interface IteratorResultWithIndex<T> extends IteratorResult<T> {
   index: number;
 }
+
+/**
+ * An iterator which returns a result with index
+ */
+interface IndexedIterator<T> extends Iterator<T> {
+  next: () => IteratorResultWithIndex<T>
+};
+
+interface IndexedIteratorChain<T> { (): IndexedIterator<T> }
+
+interface QuerySelector<TSource, TResult> { (item: TSource, index: number): TResult };
+interface QueryCallback<TSource> extends QuerySelector<TSource, void> { };
+interface QueryPredicate<TSource> extends QuerySelector<TSource, boolean> { };
+
+/**
+ * Calls next on the internal iterator and returns the transformed item
+ */
+interface QueryNexter<TResult> { (): IteratorResultWithIndex<TResult> };
+interface QueryNexterBuilder<TSource, TResult> { (internalIterator: IndexedIterator<TSource>): QueryNexter<TResult> };
+
 
 interface IQueryable<TSource> {
 
@@ -14,7 +38,7 @@ interface IQueryable<TSource> {
    * Calls the callback function for each element in the sequence.
    * @param callback
    */
-  ForEach(callback: (item: TSource, index: number) => void): void;
+  ForEach(callback: QueryCallback<TSource>): void;
 
   /* Projection Operators */
 
@@ -22,14 +46,16 @@ interface IQueryable<TSource> {
    * The Select operator performs a projection over a sequence.
    * @param selector
    */
-  Select<TResult>(selector: (item: TSource, index: number) => TResult): Queryable<TResult>;
+  Select<TResult>(selector: QuerySelector<TSource, TResult>): Queryable<TResult>;
 
   /**
    * The SelectMany operator performs a one-to-many element projection over a sequence.
    * @param selector
    * @param resultSelector
    */
-  SelectMany<TResult>(selector: (item: TSource, index: number) => Iterable<TResult>): Queryable<TResult>;
+  SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): Queryable<TResult>;
+  SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): Queryable<TResult>;
+  SelectMany(selector: QuerySelector<any, Iterable<any>>, resultSelector?: QuerySelector<any, any>): Queryable<any>;
 
   /* Restriction Operators */
 
@@ -37,7 +63,7 @@ interface IQueryable<TSource> {
    * The Where operator filters a sequence based on a predicate.
    * @param predicate
    */
-  Where(predicate: (item: TSource, index: number) => boolean): Queryable<TSource>;
+  Where(predicate: QueryPredicate<TSource>): Queryable<TSource>;
 
   /* Quantifiers */
 
@@ -47,10 +73,9 @@ interface IQueryable<TSource> {
    * The Any operator enumerates the source sequence and returns true if any element satisfies the test given by the predicate.
    * If no predicate function is specified, the Any operator simply returns true if the source sequence contains any elements.
    */
-  Any(predicate?: (item: TSource, index: number) => boolean): boolean;
+  Any(predicate?: QueryPredicate<TSource>): boolean;
 }
 
-type IteratorChain<T> = () => () => IteratorResultWithIndex<T>;
 
 /**
  * 
@@ -65,86 +90,86 @@ type IteratorChain<T> = () => () => IteratorResultWithIndex<T>;
  */
 class Queryable<TSource> implements IQueryable<TSource>{
 
-  private GetNewIterator: IteratorChain<TSource>;
+  private GetNewSourceIterator: IndexedIteratorChain<TSource>;
 
-  public constructor(source: Iterable<TSource> | IteratorChain<TSource>) {
+  public constructor(source: Iterable<TSource> | IndexedIteratorChain<TSource>) {
     if (typeof (source) == 'function') {
       // Source has already been setup
-      this.GetNewIterator = source;
+      this.GetNewSourceIterator = source;
     } else {
-      this.GetNewIterator = () => {
+      this.GetNewSourceIterator = () => {
         // Get the source iterator
         const sourceIterator: Iterator<TSource> = source[Symbol.iterator]();
         let sourceIndex: number = 0;
 
-        // Build the iterator function
-        return () => {
-          // Get the next item
-          let nextItem = sourceIterator.next() as IteratorResultWithIndex<TSource>;
-          nextItem.index = sourceIndex++;
-          return nextItem;
+        // Build the iterator
+        return {
+          next: () => {
+            // Get the next item
+            let nextItem = sourceIterator.next() as IteratorResultWithIndex<TSource>;
+            nextItem.index = sourceIndex++;
+            return nextItem;
+          }
         };
+
       };
     }
   }
 
   public ToArray(): Array<TSource> {
     const arr: Array<TSource> = [];
-    const getNext = this.GetNewIterator();
+    const source = this.GetNewSourceIterator();
 
     let result: IteratorResult<TSource>;
-    while (!(result = getNext()).done) {
+    while (!(result = source.next()).done) {
       arr.push(result.value);
     };
 
     return arr;
   }
 
-  public ForEach(callback: (item: TSource, index: number) => void): void {
-    const getNext = this.GetNewIterator();
+  public ForEach(callback: QueryCallback<TSource>): void {
+    const source = this.GetNewSourceIterator();
     let result: IteratorResultWithIndex<TSource>;
-    while (!(result = getNext()).done) {
+    while (!(result = source.next()).done) {
       callback(result.value, result.index);
     };
   }
 
-  public Select<TResult>(selector: (item: TSource, index: number) => TResult): Queryable<TResult> {
-    return new Queryable<TResult>(() => {
-      // Get a new iterator
-      const getNext = this.GetNewIterator();
-
-      // Return next-er
-      return () => {
+  public Select<TResult>(selector: QuerySelector<TSource, TResult>): Queryable<TResult> {
+    // Return selection iterator
+    return this.QueryableFromNexter<TResult>((source) =>
+      () => {
         // Get next
-        const n = getNext();
-        // Pass value through selector when not done
-        const value = (n.done ? undefined as any as TResult : selector(n.value, n.index));
+        const n = source.next();
         return {
-          value: value,
+          // Pass value through selector when not done
+          value: (n.done ? undefined as any as TResult : selector(n.value, n.index)),
           done: n.done,
           index: n.index
         };
-      };
-    });
+      }
+    );
   }
 
-  public SelectMany<TResult>(selector: (item: TSource, index: number) => Iterable<TResult>): Queryable<TResult> {
-    return new Queryable<TResult>(() => {
-      const getNext = this.GetNewIterator();
+  public SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): Queryable<TResult>;
+  public SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): Queryable<TResult>;
+  public SelectMany(selector: QuerySelector<any, Iterable<any>>, resultSelector?: QuerySelector<any, any>): Queryable<any> {
+    return this.QueryableFromNexter((source) => {
       let outerItem: IteratorResultWithIndex<TSource> | undefined;
-      let innerCollection: Iterator<TResult> | undefined;
+      let innerCollection: Iterator<any> | undefined;
 
-      const getNextInnerItem = (): IteratorResultWithIndex<TResult> => {
-        let innerItem: IteratorResult<TResult>;
+      const getNextInnerItem = (): IteratorResultWithIndex<any> => {
+        let innerItem: IteratorResult<any>;
 
         // Get next outer item?
         if (outerItem === undefined) {
-          outerItem = getNext();
+          outerItem = source.next();
 
           // Hit the end of the outer items?
           if (outerItem.done) {
             return {
-              value: undefined as any as TResult,
+              value: undefined,
               done: true,
               index: outerItem.index
             };
@@ -166,58 +191,78 @@ class Queryable<TSource> implements IQueryable<TSource>{
 
         // Return next inner item
         return {
-          value: innerItem.value as TResult,
+          value: (resultSelector ? resultSelector(innerItem.value, outerItem.index) : innerItem.value),
           done: false,
           index: outerItem.index
         };
       };
 
       return getNextInnerItem;
-    }
-    );
-  }
-
-  public Where(predicate: (item: TSource, index: number) => boolean): Queryable<TSource> {
-    return new Queryable<TSource>(() => {
-      // Get new internal iterator
-      const getNext = this.GetNewIterator();
-      return () => {
-        let n: IteratorResultWithIndex<TSource>;
-        let passed: boolean = false;
-        // Search for a match or until done
-        while (!passed && !(n = getNext()).done) {
-          passed = predicate(n.value, n.index);
-        };
-        return n!;
-      };
     });
   }
 
-  public Any(predicate?: (item: TSource, index: number) => boolean): boolean {
+  public Where(predicate: QueryPredicate<TSource>): Queryable<TSource> {
+    return this.QueryableFromNexter<TSource>((source) =>
+      () => {
+
+        let n: IteratorResultWithIndex<TSource>;
+        let passed: boolean = false;
+
+        // Search for a match or until done
+        while (!passed && !(n = source.next()).done) {
+          passed = predicate(n.value, n.index);
+        };
+        return n!;
+      }
+    );
+  }
+
+  public Any(predicate?: QueryPredicate<TSource>): boolean {
     predicate = predicate || (() => true);
     // Get new internal iterator
-    const getNext = this.GetNewIterator();
+    const source = this.GetNewSourceIterator();
 
     let n: IteratorResultWithIndex<TSource>;
     let passed: boolean = false;
     // Search for a match or until done
-    while (!passed && !(n = getNext()).done) {
+    while (!passed && !(n = source.next()).done) {
       passed = predicate(n.value, n.index);
     };
     return passed;
   }
+
+
+  /**
+   * Constructs a Queryable from the given Nexter Builder.
+   * The internal iterator comes from GetNewIterator, and is captured.
+   * @param next
+   */
+  private QueryableFromNexter<TResult>(buildNexter: QueryNexterBuilder<TSource, TResult>): Queryable<TResult> {
+    return new Queryable<TResult>(
+      () => {
+        // Get a new iterator
+        const internalIterator = this.GetNewSourceIterator();
+
+        // Build nexter
+        const nexter = buildNexter(internalIterator);
+
+        return { next: nexter };
+      }
+    );
+  }
+
 
 }
 
 // Array extensions
 interface Array<T> extends IQueryable<T> { }
 
-Array.prototype.ToArray = function () { return new Queryable(this).ToArray(); }
-Array.prototype.ForEach = function (predicate) { return new Queryable(this).ForEach(predicate); }
-Array.prototype.Select = function (selector) { return new Queryable(this).Select(selector); }
-Array.prototype.SelectMany = function (selector) { return new Queryable(this).SelectMany(selector); }
-Array.prototype.Where = function (predicate) { return new Queryable(this).Where(predicate); }
-Array.prototype.Any = function (predicate) { return new Queryable(this).Any(predicate); }
+Array.prototype.ToArray = function () { return new Queryable<any>(this).ToArray(); }
+Array.prototype.ForEach = function (callback: QueryCallback<any>) { return new Queryable<any>(this).ForEach(callback); }
+Array.prototype.Select = function (selector: QuerySelector<any, any>) { return new Queryable<any>(this).Select(selector); }
+Array.prototype.SelectMany = function (selector: QuerySelector<any, Iterable<any>>, resultSelector?: QuerySelector<any, any>) { return new Queryable(this).SelectMany(selector, resultSelector!); }
+Array.prototype.Where = function (predicate: QueryPredicate<any>) { return new Queryable<any>(this).Where(predicate); }
+Array.prototype.Any = function (predicate: QueryPredicate<any>) { return new Queryable<any>(this).Any(predicate); }
 
 // ===================== TESTS =====================
 
@@ -360,7 +405,7 @@ class TestQueryable {
 
     this.ExecuteMatchTest(
       'SelectMany All Pets, Select First letter',
-      this.Owners.SelectMany(owner => owner.Pets).Select(pname => pname[0]),
+      this.Owners.SelectMany<string, any>(owner => owner.Pets, pname => pname[0]),
       ['F', 'K', 'G', 'T', 'B', 'M', 'T']
     );
   }

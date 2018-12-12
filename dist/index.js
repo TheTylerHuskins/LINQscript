@@ -1,4 +1,10 @@
 "use strict";
+;
+;
+;
+;
+;
+;
 /**
  *
  * Note: The source iterator is created on demand, successive calls produce new iterators.
@@ -14,69 +20,65 @@ class Queryable {
     constructor(source) {
         if (typeof (source) == 'function') {
             // Source has already been setup
-            this.GetNewIterator = source;
+            this.GetNewSourceIterator = source;
         }
         else {
-            this.GetNewIterator = () => {
+            this.GetNewSourceIterator = () => {
                 // Get the source iterator
                 const sourceIterator = source[Symbol.iterator]();
                 let sourceIndex = 0;
-                // Build the iterator function
-                return () => {
-                    // Get the next item
-                    let nextItem = sourceIterator.next();
-                    nextItem.index = sourceIndex++;
-                    return nextItem;
+                // Build the iterator
+                return {
+                    next: () => {
+                        // Get the next item
+                        let nextItem = sourceIterator.next();
+                        nextItem.index = sourceIndex++;
+                        return nextItem;
+                    }
                 };
             };
         }
     }
     ToArray() {
         const arr = [];
-        const getNext = this.GetNewIterator();
+        const source = this.GetNewSourceIterator();
         let result;
-        while (!(result = getNext()).done) {
+        while (!(result = source.next()).done) {
             arr.push(result.value);
         }
         ;
         return arr;
     }
     ForEach(callback) {
-        const getNext = this.GetNewIterator();
+        const source = this.GetNewSourceIterator();
         let result;
-        while (!(result = getNext()).done) {
+        while (!(result = source.next()).done) {
             callback(result.value, result.index);
         }
         ;
     }
     Select(selector) {
-        return new Queryable(() => {
-            // Get a new iterator
-            const getNext = this.GetNewIterator();
-            // Return next-er
-            return () => {
-                // Get next
-                const n = getNext();
+        // Return selection iterator
+        return this.QueryableFromNexter((source) => () => {
+            // Get next
+            const n = source.next();
+            return {
                 // Pass value through selector when not done
-                const value = (n.done ? undefined : selector(n.value, n.index));
-                return {
-                    value: value,
-                    done: n.done,
-                    index: n.index
-                };
+                value: (n.done ? undefined : selector(n.value, n.index)),
+                done: n.done,
+                index: n.index
             };
         });
     }
-    SelectMany(selector) {
-        return new Queryable(() => {
-            const getNext = this.GetNewIterator();
+    SelectMany(selector, resultSelector) {
+        return this.QueryableFromNexter((source) => {
             let outerItem;
             let innerCollection;
             const getNextInnerItem = () => {
                 let innerItem;
                 // Get next outer item?
                 if (outerItem === undefined) {
-                    outerItem = getNext();
+                    outerItem = source.next();
                     // Hit the end of the outer items?
                     if (outerItem.done) {
                         return {
@@ -98,7 +100,7 @@ class Queryable {
                 }
                 // Return next inner item
                 return {
-                    value: innerItem.value,
+                    value: (resultSelector ? resultSelector(innerItem.value, outerItem.index) : innerItem.value),
                     done: false,
                     index: outerItem.index
                 };
@@ -107,45 +109,55 @@ class Queryable {
         });
     }
     Where(predicate) {
-        return new Queryable(() => {
-            // Get new internal iterator
-            const getNext = this.GetNewIterator();
-            return () => {
-                let n;
-                let passed = false;
-                // Search for a match or until done
-                while (!passed && !(n = getNext()).done) {
-                    passed = predicate(n.value, n.index);
-                }
-                ;
-                return n;
-            };
+        return this.QueryableFromNexter((source) => () => {
+            let n;
+            let passed = false;
+            // Search for a match or until done
+            while (!passed && !(n = source.next()).done) {
+                passed = predicate(n.value, n.index);
+            }
+            ;
+            return n;
         });
     }
     Any(predicate) {
         predicate = predicate || (() => true);
         // Get new internal iterator
-        const getNext = this.GetNewIterator();
+        const source = this.GetNewSourceIterator();
         let n;
         let passed = false;
         // Search for a match or until done
-        while (!passed && !(n = getNext()).done) {
+        while (!passed && !(n = source.next()).done) {
             passed = predicate(n.value, n.index);
         }
         ;
         return passed;
     }
+    /**
+     * Constructs a Queryable from the given Nexter Builder.
+     * The internal iterator comes from GetNewIterator, and is captured.
+     * @param next
+     */
+    QueryableFromNexter(buildNexter) {
+        return new Queryable(() => {
+            // Get a new iterator
+            const internalIterator = this.GetNewSourceIterator();
+            // Build nexter
+            const nexter = buildNexter(internalIterator);
+            return { next: nexter };
+        });
+    }
 }
 Array.prototype.ToArray = function () { return new Queryable(this).ToArray(); };
-Array.prototype.ForEach = function (predicate) { return new Queryable(this).ForEach(predicate); };
+Array.prototype.ForEach = function (callback) { return new Queryable(this).ForEach(callback); };
 Array.prototype.Select = function (selector) { return new Queryable(this).Select(selector); };
-Array.prototype.SelectMany = function (selector) { return new Queryable(this).SelectMany(selector); };
+Array.prototype.SelectMany = function (selector, resultSelector) { return new Queryable(this).SelectMany(selector, resultSelector); };
 Array.prototype.Where = function (predicate) { return new Queryable(this).Where(predicate); };
 Array.prototype.Any = function (predicate) { return new Queryable(this).Any(predicate); };
 class TestQueryable {
     constructor() {
-        this.NumQuery = [1, 2, 3, 4];
-        this.OwnerQuery = [
+        this.Numbers = [1, 2, 3, 4];
+        this.Owners = [
             {
                 Name: 'Bob',
                 Age: 34,
@@ -183,7 +195,7 @@ class TestQueryable {
                 Pets: ['Tort']
             },
         ];
-        this.PersonQuery = [];
+        this.Persons = [];
         // Bob -> Sally -> Jeff -> Heather
         // Bob -> Mark
         this.CreatePerson('Bob', this.CreatePerson('Sally', this.CreatePerson('Jeff', this.CreatePerson('Heather'))), this.CreatePerson('Mark'));
@@ -194,8 +206,8 @@ class TestQueryable {
     RunSuite() {
         console.log('=== Testing Failure Modes ==');
         this.ReportTest('ReportTest Fail', false, 'This test should fail');
-        this.ExecuteMatchTest('MatchTest Fail Length', this.NumQuery, []);
-        this.ExecuteMatchTest('MatchTest Fail Values', this.NumQuery, [2, 3, 4, 5]);
+        this.ExecuteMatchTest('MatchTest Fail Length', this.Numbers, []);
+        this.ExecuteMatchTest('MatchTest Fail Values', this.Numbers, [2, 3, 4, 5]);
         console.log('=== End Testing Failure Modes ==');
         this.ReportTest('ReportTest Pass', true, null);
         this.OperationalTests();
@@ -204,23 +216,23 @@ class TestQueryable {
         this.ChainTests();
     }
     OperationalTests() {
-        this.ExecuteMatchTest('ToArray', this.NumQuery, [1, 2, 3, 4]);
-        this.ReportTest('Any', this.NumQuery.Any(), null);
-        this.ReportTest('Any Owner is 27', this.OwnerQuery.Any(o => o.Age == 27), null);
+        this.ExecuteMatchTest('ToArray', this.Numbers, [1, 2, 3, 4]);
+        this.ReportTest('Any', this.Numbers.Any(), null);
+        this.ReportTest('Any Owner is 27', this.Owners.Any(o => o.Age == 27), null);
     }
     SelectTests() {
-        this.ExecuteMatchTest('Select Number', this.NumQuery.Select((item, index) => item + index), [1, 3, 5, 7]);
-        this.ExecuteMatchTest('Select First Pet', this.OwnerQuery.Select((owner) => owner.Pets.length > 0 ? owner.Pets[0] : null), [null, 'Fluffy', 'Terror', 'Mr. Squawks', null, 'Tort']);
-        this.ExecuteMatchTest('SelectMany All Pets', this.OwnerQuery.SelectMany(owner => owner.Pets), ['Fluffy', 'Kitty', 'Gus', 'Terror', 'Butch', 'Mr. Squawks', 'Tort']);
-        this.ExecuteMatchTest('SelectMany All Pets, Select First letter', this.OwnerQuery.SelectMany(owner => owner.Pets).Select(pname => pname[0]), ['F', 'K', 'G', 'T', 'B', 'M', 'T']);
+        this.ExecuteMatchTest('Select Number', this.Numbers.Select((item, index) => item + index), [1, 3, 5, 7]);
+        this.ExecuteMatchTest('Select First Pet', this.Owners.Select((owner) => owner.Pets.length > 0 ? owner.Pets[0] : null), [null, 'Fluffy', 'Terror', 'Mr. Squawks', null, 'Tort']);
+        this.ExecuteMatchTest('SelectMany All Pets', this.Owners.SelectMany(owner => owner.Pets), ['Fluffy', 'Kitty', 'Gus', 'Terror', 'Butch', 'Mr. Squawks', 'Tort']);
+        this.ExecuteMatchTest('SelectMany All Pets, Select First letter', this.Owners.SelectMany(owner => owner.Pets, pname => pname[0]), ['F', 'K', 'G', 'T', 'B', 'M', 'T']);
     }
     WhereTests() {
-        this.ExecuteMatchTest('Where Number', this.NumQuery.Where((item, index) => item === 4 || index === 0), [1, 4]);
-        this.ExecuteMatchTest('Where Object', this.OwnerQuery.Where((owner) => owner.Age > 30), [this.OwnerQuery[0], this.OwnerQuery[2], this.OwnerQuery[4], this.OwnerQuery[5]]);
+        this.ExecuteMatchTest('Where Number', this.Numbers.Where((item, index) => item === 4 || index === 0), [1, 4]);
+        this.ExecuteMatchTest('Where Object', this.Owners.Where((owner) => owner.Age > 30), [this.Owners[0], this.Owners[2], this.Owners[4], this.Owners[5]]);
     }
     ChainTests() {
         // Persons
-        const persons = this.PersonQuery.Select(p => p);
+        const persons = this.Persons.Select(p => p);
         // Persons with children
         const parents = persons
             .Where(person => person.Children.length > 0);
@@ -279,7 +291,7 @@ class TestQueryable {
     }
     CreatePerson(name, ...children) {
         const p = { Name: name, Children: children };
-        this.PersonQuery.push(p);
+        this.Persons.push(p);
         return p;
     }
 }

@@ -1,5 +1,33 @@
+/**
+ * An iterator result that includes the index
+ */
 interface IteratorResultWithIndex<T> extends IteratorResult<T> {
     index: number;
+}
+/**
+ * An iterator which returns a result with index
+ */
+interface IndexedIterator<T> extends Iterator<T> {
+    next: () => IteratorResultWithIndex<T>;
+}
+interface IndexedIteratorChain<T> {
+    (): IndexedIterator<T>;
+}
+interface QuerySelector<TSource, TResult> {
+    (item: TSource, index: number): TResult;
+}
+interface QueryCallback<TSource> extends QuerySelector<TSource, void> {
+}
+interface QueryPredicate<TSource> extends QuerySelector<TSource, boolean> {
+}
+/**
+ * Calls next on the internal iterator and returns the transformed item
+ */
+interface QueryNexter<TResult> {
+    (): IteratorResultWithIndex<TResult>;
+}
+interface QueryNexterBuilder<TSource, TResult> {
+    (internalIterator: IndexedIterator<TSource>): QueryNexter<TResult>;
 }
 interface IQueryable<TSource> {
     /**
@@ -10,32 +38,33 @@ interface IQueryable<TSource> {
      * Calls the callback function for each element in the sequence.
      * @param callback
      */
-    ForEach(callback: (item: TSource, index: number) => void): void;
+    ForEach(callback: QueryCallback<TSource>): void;
     /**
      * The Select operator performs a projection over a sequence.
      * @param selector
      */
-    Select<TResult>(selector: (item: TSource, index: number) => TResult): Queryable<TResult>;
+    Select<TResult>(selector: QuerySelector<TSource, TResult>): Queryable<TResult>;
     /**
      * The SelectMany operator performs a one-to-many element projection over a sequence.
      * @param selector
      * @param resultSelector
      */
-    SelectMany<TResult>(selector: (item: TSource, index: number) => Iterable<TResult>): Queryable<TResult>;
+    SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): Queryable<TResult>;
+    SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): Queryable<TResult>;
+    SelectMany(selector: QuerySelector<any, Iterable<any>>, resultSelector?: QuerySelector<any, any>): Queryable<any>;
     /**
      * The Where operator filters a sequence based on a predicate.
      * @param predicate
      */
-    Where(predicate: (item: TSource, index: number) => boolean): Queryable<TSource>;
+    Where(predicate: QueryPredicate<TSource>): Queryable<TSource>;
     /**
      * The Any operator checks whether any element of a sequence satisfies a condition.
      *
      * The Any operator enumerates the source sequence and returns true if any element satisfies the test given by the predicate.
      * If no predicate function is specified, the Any operator simply returns true if the source sequence contains any elements.
      */
-    Any(predicate?: (item: TSource, index: number) => boolean): boolean;
+    Any(predicate?: QueryPredicate<TSource>): boolean;
 }
-declare type IteratorChain<T> = () => () => IteratorResultWithIndex<T>;
 /**
  *
  * Note: The source iterator is created on demand, successive calls produce new iterators.
@@ -48,14 +77,21 @@ declare type IteratorChain<T> = () => () => IteratorResultWithIndex<T>;
  * Iterating x will not effect y.
  */
 declare class Queryable<TSource> implements IQueryable<TSource> {
-    private GetNewIterator;
-    constructor(source: Iterable<TSource> | IteratorChain<TSource>);
+    private GetNewSourceIterator;
+    constructor(source: Iterable<TSource> | IndexedIteratorChain<TSource>);
     ToArray(): Array<TSource>;
-    ForEach(callback: (item: TSource, index: number) => void): void;
-    Select<TResult>(selector: (item: TSource, index: number) => TResult): Queryable<TResult>;
-    SelectMany<TResult>(selector: (item: TSource, index: number) => Iterable<TResult>): Queryable<TResult>;
-    Where(predicate: (item: TSource, index: number) => boolean): Queryable<TSource>;
-    Any(predicate?: (item: TSource, index: number) => boolean): boolean;
+    ForEach(callback: QueryCallback<TSource>): void;
+    Select<TResult>(selector: QuerySelector<TSource, TResult>): Queryable<TResult>;
+    SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): Queryable<TResult>;
+    SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): Queryable<TResult>;
+    Where(predicate: QueryPredicate<TSource>): Queryable<TSource>;
+    Any(predicate?: QueryPredicate<TSource>): boolean;
+    /**
+     * Constructs a Queryable from the given Nexter Builder.
+     * The internal iterator comes from GetNewIterator, and is captured.
+     * @param next
+     */
+    private QueryableFromNexter;
 }
 interface Array<T> extends IQueryable<T> {
 }
@@ -70,9 +106,9 @@ interface IPerson {
     Children: Array<IPerson>;
 }
 declare class TestQueryable {
-    private NumQuery;
-    private OwnerQuery;
-    private PersonQuery;
+    private Numbers;
+    private Owners;
+    private Persons;
     constructor();
     RunSuite(): void;
     OperationalTests(): void;
