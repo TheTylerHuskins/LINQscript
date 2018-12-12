@@ -1,48 +1,85 @@
-interface Array<T> {
+interface IteratorResultWithIndex<T> extends IteratorResult<T> {
+    index: number;
+}
+interface IQueryable<TSource> {
     /**
-     * Applies an accumulator function over a sequence.
-     * Returns undefined when array length is zero.
-     * @param this Sequence to aggrigate over.
-     * @param func An accumulator function to be invoked on each element.
+     * Iterate and store values into a new array.
      */
-    Aggregate(this: Array<T>, func: (accumulator: T, item: T) => T): T | undefined;
+    ToArray(): Array<TSource>;
     /**
-     * Applies an accumulator function over a sequence. The specified seed value is used as the initial accumulator value.
-     * @param this Sequence to aggrigate over.
-     * @param func An accumulator function to be invoked on each element.
-     * @param seed The initial accumulator value.
+     * Calls the callback function for each element in the sequence.
+     * @param callback
      */
-    Aggregate<TAccumulate>(this: Array<T>, func: (accumulator: TAccumulate, item: T) => TAccumulate, seed: TAccumulate): TAccumulate;
+    ForEach(callback: (item: TSource, index: number) => void): void;
     /**
-     * Applies an accumulator function over a sequence. The specified seed value is used as the initial accumulator value.
-     * @param this Sequence to aggrigate over.
-     * @param func An accumulator function to be invoked on each element.
-     * @param seed The initial accumulator value.
-     * @param resultSelector A function to transform the final accumulator value into the result value.
+     * The Select operator performs a projection over a sequence.
+     * @param selector
      */
-    Aggregate<TAccumulate, TResult>(this: Array<T>, func: (accumulator: TAccumulate, item: T) => TAccumulate, seed: TAccumulate, resultSelector: (accumulator?: TAccumulate) => TResult): TResult;
+    Select<TResult>(selector: (item: TSource, index: number) => TResult): Queryable<TResult>;
     /**
-     * Projects each element of a sequence into a new form by incorporating the element's index.
-     * @param this A sequence of values to project.
-     * @param selector A transform function to apply to each element.
+     * The SelectMany operator performs a one-to-many element projection over a sequence.
+     * @param selector
+     * @param resultSelector
      */
-    Select<TResult>(this: Array<T>, selector: (item: T, index?: number) => TResult): Array<TResult>;
+    SelectMany<TResult>(selector: (item: TSource, index: number) => Iterable<TResult>): Queryable<TResult>;
     /**
-     * Projects each element of a sequence to an IEnumerable<T> and flattens the resulting sequences into one sequence.
-     * @param this A sequence of values to project.
-     * @param collectionSelector A transform function to apply to each element.
-     * @param resultSelector A transform function to apply to each element of the intermediate sequence.
+     * The Where operator filters a sequence based on a predicate.
+     * @param predicate
      */
-    SelectMany<TIntermediate, TResult>(this: Array<T>, collectionSelector: (item: T) => Array<TIntermediate>, resultSelector: (item: T, child: TIntermediate) => TResult): Array<TResult>;
+    Where(predicate: (item: TSource, index: number) => boolean): Queryable<TSource>;
     /**
-   * Projects each element of a sequence to an IEnumerable<T> and flattens the resulting sequences into one sequence.
-   * @param this A sequence of values to project.
-   * @param collectionSelector A transform function to apply to each element.
-   */
-    SelectMany<TResult>(this: Array<T>, collectionSelector: (item: T) => Array<TResult>): Array<TResult>;
-    /**
-   * Projects each element of a sequence to an IEnumerable<T> and flattens the resulting sequences into one sequence.
-   * @param this A sequence of values to project.
-   */
-    SelectMany<TResult>(this: Array<Array<TResult>>): Array<TResult>;
+     * The Any operator checks whether any element of a sequence satisfies a condition.
+     *
+     * The Any operator enumerates the source sequence and returns true if any element satisfies the test given by the predicate.
+     * If no predicate function is specified, the Any operator simply returns true if the source sequence contains any elements.
+     */
+    Any(predicate?: (item: TSource, index: number) => boolean): boolean;
+}
+declare type IteratorChain<T> = () => () => IteratorResultWithIndex<T>;
+/**
+ *
+ * Note: The source iterator is created on demand, successive calls produce new iterators.
+ * Chained iterators will pass-through until the source iterator is hit
+ *
+ * const x = query.Select(a=>a.Name);
+ *
+ * const y = query.Select(a=>a.Age);
+ *
+ * Iterating x will not effect y.
+ */
+declare class Queryable<TSource> implements IQueryable<TSource> {
+    private GetNewIterator;
+    constructor(source: Iterable<TSource> | IteratorChain<TSource>);
+    ToArray(): Array<TSource>;
+    ForEach(callback: (item: TSource, index: number) => void): void;
+    Select<TResult>(selector: (item: TSource, index: number) => TResult): Queryable<TResult>;
+    SelectMany<TResult>(selector: (item: TSource, index: number) => Iterable<TResult>): Queryable<TResult>;
+    Where(predicate: (item: TSource, index: number) => boolean): Queryable<TSource>;
+    Any(predicate?: (item: TSource, index: number) => boolean): boolean;
+}
+interface Array<T> extends IQueryable<T> {
+}
+interface IOwner {
+    Name: string;
+    Age: number;
+    Registered: boolean;
+    Pets: Array<string>;
+}
+interface IPerson {
+    Name: string;
+    Children: Array<IPerson>;
+}
+declare class TestQueryable {
+    private NumQuery;
+    private OwnerQuery;
+    private PersonQuery;
+    constructor();
+    RunSuite(): void;
+    OperationalTests(): void;
+    SelectTests(): void;
+    WhereTests(): void;
+    ChainTests(): void;
+    private ExecuteMatchTest;
+    private ReportTest;
+    private CreatePerson;
 }

@@ -8,7 +8,8 @@
     "example": "examples"
   },
   "scripts": {
-    "build": "tsc && uglifyjs-folder ./dist -o ./dist/index.min.js --pattern \"**/*.js,!**/*min.js,!examples/**\" --config-file \"./uglify.json\"",
+    "build": "tsc",
+    "minify": "uglifyjs-folder ./dist -o ./dist/index.min.js --pattern \"**/*.js,!**/*min.js,!examples/**\" --config-file \"./uglify.json\"",
     "watch": "tsc -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -26,7 +27,7 @@
   },
   "homepage": "https://github.com/TheTylerHuskins/LINQscript#readme",
   "devDependencies": {
-    "typescript": "^2.9.2",
+    "typescript": "^3.2.2",
     "uglify-js": "^3.4.4",
     "uglifyjs-folder": "^1.5.1"
   },
