@@ -5,32 +5,17 @@
 ;
 ;
 ;
-/**
- *
- * Note: The source iterator is created on demand, successive calls produce new iterators.
- * Chained iterators will pass-through until the source iterator is hit
- *
- * const x = query.Select(a=>a.Name);
- *
- * const y = query.Select(a=>a.Age);
- *
- * Iterating x will not effect y.
- */
 class Queryable {
     constructor(source) {
         if (typeof (source) == 'function') {
-            // Source has already been setup
             this.GetNewSourceIterator = source;
         }
         else {
             this.GetNewSourceIterator = () => {
-                // Get the source iterator
                 const sourceIterator = source[Symbol.iterator]();
                 let sourceIndex = 0;
-                // Build the iterator
                 return {
                     next: () => {
-                        // Get the next item
                         let nextItem = sourceIterator.next();
                         nextItem.index = sourceIndex++;
                         return nextItem;
@@ -38,16 +23,6 @@ class Queryable {
                 };
             };
         }
-    }
-    ToArray() {
-        const arr = [];
-        const source = this.GetNewSourceIterator();
-        let result;
-        while (!(result = source.next()).done) {
-            arr.push(result.value);
-        }
-        ;
-        return arr;
     }
     ForEach(callback) {
         const source = this.GetNewSourceIterator();
@@ -57,13 +32,21 @@ class Queryable {
         }
         ;
     }
-    Select(selector) {
-        // Return selection iterator
+    Where(predicate) {
         return this.QueryableFromNexter((source) => () => {
-            // Get next
+            let n;
+            let passed = false;
+            while (!passed && !(n = source.next()).done) {
+                passed = predicate(n.value, n.index);
+            }
+            ;
+            return n;
+        });
+    }
+    Select(selector) {
+        return this.QueryableFromNexter((source) => () => {
             const n = source.next();
             return {
-                // Pass value through selector when not done
                 value: (n.done ? undefined : selector(n.value, n.index)),
                 done: n.done,
                 index: n.index
@@ -76,10 +59,8 @@ class Queryable {
             let innerCollection;
             const getNextInnerItem = () => {
                 let innerItem;
-                // Get next outer item?
                 if (outerItem === undefined) {
                     outerItem = source.next();
-                    // Hit the end of the outer items?
                     if (outerItem.done) {
                         return {
                             value: undefined,
@@ -87,18 +68,14 @@ class Queryable {
                             index: outerItem.index
                         };
                     }
-                    // Get the inner collection
                     innerCollection = selector(outerItem.value, outerItem.index)[Symbol.iterator]();
                 }
-                // Get the next inner item
                 innerItem = innerCollection.next();
                 if (innerItem.done) {
-                    // Hit the end of the inner items, get next outer item
                     outerItem = undefined;
                     innerCollection = undefined;
                     return getNextInnerItem();
                 }
-                // Return next inner item
                 return {
                     value: (resultSelector ? resultSelector(innerItem.value, outerItem.index) : innerItem.value),
                     done: false,
@@ -108,41 +85,75 @@ class Queryable {
             return getNextInnerItem;
         });
     }
-    Where(predicate) {
-        return this.QueryableFromNexter((source) => () => {
-            let n;
-            let passed = false;
-            // Search for a match or until done
-            while (!passed && !(n = source.next()).done) {
-                passed = predicate(n.value, n.index);
-            }
-            ;
-            return n;
-        });
+    Take(count) {
+        throw new Error("Method not implemented.");
+    }
+    Skip(count) {
+        throw new Error("Method not implemented.");
+    }
+    TakeWhile(predicate) {
+        throw new Error("Method not implemented.");
+    }
+    SkipWhile(predicate) {
+        throw new Error("Method not implemented.");
+    }
+    Join(inner, outerKeySelector, innerKeySelector, resultSelector, comparer) {
+        throw new Error("Method not implemented.");
+    }
+    Concat(other) {
+        throw new Error("Method not implemented.");
+    }
+    Reverse() {
+        throw new Error("Method not implemented.");
+    }
+    GroupBy(keySelector, elementSelector, comparer) {
+        throw new Error("Method not implemented.");
+    }
+    Distinct(comparer) {
+        throw new Error("Method not implemented.");
+    }
+    Union(other, comparer) {
+        throw new Error("Method not implemented.");
+    }
+    Intersect(other, comparer) {
+        throw new Error("Method not implemented.");
+    }
+    Except(other, comparer) {
+        throw new Error("Method not implemented.");
+    }
+    ToArray() {
+        const arr = [];
+        const source = this.GetNewSourceIterator();
+        let result;
+        while (!(result = source.next()).done) {
+            arr.push(result.value);
+        }
+        ;
+        return arr;
+    }
+    AsIterable() {
+        throw new Error("Method not implemented.");
+    }
+    ToMap(keySelector, elementSelector, comparer) {
+        throw new Error("Method not implemented.");
+    }
+    OfType(type) {
+        throw new Error("Method not implemented.");
     }
     Any(predicate) {
         predicate = predicate || (() => true);
-        // Get new internal iterator
         const source = this.GetNewSourceIterator();
         let n;
         let passed = false;
-        // Search for a match or until done
         while (!passed && !(n = source.next()).done) {
             passed = predicate(n.value, n.index);
         }
         ;
         return passed;
     }
-    /**
-     * Constructs a Queryable from the given Nexter Builder.
-     * The internal iterator comes from GetNewIterator, and is captured.
-     * @param next
-     */
     QueryableFromNexter(buildNexter) {
         return new Queryable(() => {
-            // Get a new iterator
             const internalIterator = this.GetNewSourceIterator();
-            // Build nexter
             const nexter = buildNexter(internalIterator);
             return { next: nexter };
         });
@@ -196,11 +207,7 @@ class TestQueryable {
             },
         ];
         this.Persons = [];
-        // Bob -> Sally -> Jeff -> Heather
-        // Bob -> Mark
         this.CreatePerson('Bob', this.CreatePerson('Sally', this.CreatePerson('Jeff', this.CreatePerson('Heather'))), this.CreatePerson('Mark'));
-        // Alice -> June -> Rigney -> Alice
-        // June -> Steve
         this.CreatePerson('Alice', this.CreatePerson('June', this.CreatePerson('Rigney', this.CreatePerson('Alice'))), this.CreatePerson('Steve'));
     }
     RunSuite() {
@@ -231,29 +238,19 @@ class TestQueryable {
         this.ExecuteMatchTest('Where Object', this.Owners.Where((owner) => owner.Age > 30), [this.Owners[0], this.Owners[2], this.Owners[4], this.Owners[5]]);
     }
     ChainTests() {
-        // Persons
         const persons = this.Persons.Select(p => p);
-        // Persons with children
         const parents = persons
             .Where(person => person.Children.length > 0);
-        // Persons with grandchildren
         const grandParents = parents
             .Where(person => person.Children.Any(child => child.Children.length > 0));
-        // Persons with great-grandchildren
         const greatGrandParents = grandParents
             .Where(person => person.Children
             .SelectMany(child => child.Children)
             .Any(grandChild => grandChild.Children.length > 0));
-        // Where Any(p.Children.Children has Children)
-        // Persons with parents
         const children = parents.SelectMany(p => p.Children);
-        // Persons with grandparents
         const grandChildren = children.SelectMany(c => c.Children);
-        // Persons with great grandparents
         const greatGrandChildren = grandChildren.SelectMany(gc => gc.Children);
-        // Persons who have a greatgrandchild with the same name as them
         const nameLegacy = greatGrandParents.Where(p => p.Children.SelectMany(child => child.Children).SelectMany(grandchild => grandchild.Children).Any(ggc => ggc.Name === p.Name));
-        // Where p.Name = p.Child.Child.Child.Name
         this.ExecuteMatchTest('Chain: Parents', parents.Select(p => p.Name), ['Jeff', 'Sally', 'Bob', 'Rigney', 'June', 'Alice']);
         this.ExecuteMatchTest('Chain: Grandparents', grandParents.Select(p => p.Name), ['Sally', 'Bob', 'June', 'Alice']);
         this.ExecuteMatchTest('Chain: Great Grandparents', greatGrandParents.Select(p => p.Name), ['Bob', 'Alice']);
@@ -295,5 +292,4 @@ class TestQueryable {
         return p;
     }
 }
-// Run suite
 (new TestQueryable()).RunSuite();

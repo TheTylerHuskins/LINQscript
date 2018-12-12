@@ -1,12 +1,6 @@
-/**
- * An iterator result that includes the index
- */
 interface IteratorResultWithIndex<T> extends IteratorResult<T> {
     index: number;
 }
-/**
- * An iterator which returns a result with index
- */
 interface IndexedIterator<T> extends Iterator<T> {
     next: () => IteratorResultWithIndex<T>;
 }
@@ -20,77 +14,68 @@ interface QueryCallback<TSource> extends QuerySelector<TSource, void> {
 }
 interface QueryPredicate<TSource> extends QuerySelector<TSource, boolean> {
 }
-/**
- * Calls next on the internal iterator and returns the transformed item
- */
 interface QueryNexter<TResult> {
     (): IteratorResultWithIndex<TResult>;
 }
 interface QueryNexterBuilder<TSource, TResult> {
     (internalIterator: IndexedIterator<TSource>): QueryNexter<TResult>;
 }
+interface IEqualityCompararer<TKey> {
+    (outerKey: TKey, innerKey: TKey): boolean;
+}
+interface IGrouping<TKey, TElement> extends Array<TElement> {
+    Key: TKey;
+}
 interface IQueryable<TSource> {
-    /**
-     * Iterate and store values into a new array.
-     */
-    ToArray(): Array<TSource>;
-    /**
-     * Calls the callback function for each element in the sequence.
-     * @param callback
-     */
     ForEach(callback: QueryCallback<TSource>): void;
-    /**
-     * The Select operator performs a projection over a sequence.
-     * @param selector
-     */
-    Select<TResult>(selector: QuerySelector<TSource, TResult>): Queryable<TResult>;
-    /**
-     * The SelectMany operator performs a one-to-many element projection over a sequence.
-     * @param selector
-     * @param resultSelector
-     */
-    SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): Queryable<TResult>;
-    SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): Queryable<TResult>;
-    SelectMany(selector: QuerySelector<any, Iterable<any>>, resultSelector?: QuerySelector<any, any>): Queryable<any>;
-    /**
-     * The Where operator filters a sequence based on a predicate.
-     * @param predicate
-     */
-    Where(predicate: QueryPredicate<TSource>): Queryable<TSource>;
-    /**
-     * The Any operator checks whether any element of a sequence satisfies a condition.
-     *
-     * The Any operator enumerates the source sequence and returns true if any element satisfies the test given by the predicate.
-     * If no predicate function is specified, the Any operator simply returns true if the source sequence contains any elements.
-     */
+    Where(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    Select<TResult>(selector: QuerySelector<TSource, TResult>): IQueryable<TResult>;
+    SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): IQueryable<TResult>;
+    SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): IQueryable<TResult>;
+    SelectMany(selector: QuerySelector<any, Iterable<any>>, resultSelector?: QuerySelector<any, any>): IQueryable<any>;
+    Take(count: number): IQueryable<TSource>;
+    Skip(count: number): IQueryable<TSource>;
+    TakeWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    SkipWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    Join<TInner, TKey, TResult>(inner: Iterable<TInner>, outerKeySelector: QuerySelector<TSource, TKey>, innerKeySelector: QuerySelector<TInner, TKey>, resultSelector: (outer: TSource, inner: TInner) => TResult, comparer: IEqualityCompararer<TKey>): IQueryable<TResult>;
+    Concat(other: Iterable<TSource>): IQueryable<TSource>;
+    Reverse(): IQueryable<TSource>;
+    GroupBy<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): IQueryable<IGrouping<TKey, TElement>>;
+    Distinct(comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Union(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Intersect(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Except(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    ToArray(): Array<TSource>;
+    AsIterable(): Iterable<TSource>;
+    ToMap<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): Map<TKey, TElement>;
+    OfType(type: "boolean" | "function" | "number" | "object" | "string" | "symbol" | "undefined"): IQueryable<TSource>;
     Any(predicate?: QueryPredicate<TSource>): boolean;
 }
-/**
- *
- * Note: The source iterator is created on demand, successive calls produce new iterators.
- * Chained iterators will pass-through until the source iterator is hit
- *
- * const x = query.Select(a=>a.Name);
- *
- * const y = query.Select(a=>a.Age);
- *
- * Iterating x will not effect y.
- */
 declare class Queryable<TSource> implements IQueryable<TSource> {
     private GetNewSourceIterator;
     constructor(source: Iterable<TSource> | IndexedIteratorChain<TSource>);
-    ToArray(): Array<TSource>;
     ForEach(callback: QueryCallback<TSource>): void;
-    Select<TResult>(selector: QuerySelector<TSource, TResult>): Queryable<TResult>;
-    SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): Queryable<TResult>;
-    SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): Queryable<TResult>;
-    Where(predicate: QueryPredicate<TSource>): Queryable<TSource>;
+    Where(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    Select<TResult>(selector: QuerySelector<TSource, TResult>): IQueryable<TResult>;
+    SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): IQueryable<TResult>;
+    SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): IQueryable<TResult>;
+    Take<TSource>(count: number): IQueryable<TSource>;
+    Skip(count: number): IQueryable<TSource>;
+    TakeWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    SkipWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    Join<TInner, TKey, TResult>(inner: Iterable<TInner>, outerKeySelector: QuerySelector<TSource, TKey>, innerKeySelector: QuerySelector<TInner, TKey>, resultSelector: (outer: TSource, inner: TInner) => TResult, comparer: IEqualityCompararer<TKey>): IQueryable<TResult>;
+    Concat(other: Iterable<TSource>): IQueryable<TSource>;
+    Reverse(): IQueryable<TSource>;
+    GroupBy<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): IQueryable<IGrouping<TKey, TElement>>;
+    Distinct(comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Union(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Intersect(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Except(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    ToArray(): Array<TSource>;
+    AsIterable(): Iterable<TSource>;
+    ToMap<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): Map<TKey, TElement>;
+    OfType(type: "string" | "number" | "boolean" | "symbol" | "undefined" | "object" | "function"): IQueryable<TSource>;
     Any(predicate?: QueryPredicate<TSource>): boolean;
-    /**
-     * Constructs a Queryable from the given Nexter Builder.
-     * The internal iterator comes from GetNewIterator, and is captured.
-     * @param next
-     */
     private QueryableFromNexter;
 }
 interface Array<T> extends IQueryable<T> {

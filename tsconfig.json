@@ -4,7 +4,10 @@
     "module": "commonjs",
     "declaration": true,
     "outDir": "./dist",
-    "strict": true
+    "strict": true,
+    "removeComments": true,
+    "alwaysStrict": true,
+    "noUnusedLocals": true
   },
   "include": [
     "index.ts",
