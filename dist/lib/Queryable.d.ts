@@ -1,0 +1,33 @@
+import { IQueryable, IEqualityCompararer, IGrouping, QueryCallback, QueryPredicate, QuerySelector } from "./IQueryable";
+export declare class Queryable<TSource> implements IQueryable<TSource> {
+    private IITer;
+    static From<T>(source: Iterable<T>): IQueryable<T>;
+    constructor(source: Iterable<TSource> | IndexedIteratorChain<TSource>);
+    ForEach(callback: QueryCallback<TSource>): void;
+    Where(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    Select<TResult>(selector: QuerySelector<TSource, TResult>): IQueryable<TResult>;
+    SelectMany<TResult>(selector: QuerySelector<TSource, Iterable<TResult>>): IQueryable<TResult>;
+    SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): IQueryable<TResult>;
+    Take(count: number): IQueryable<TSource>;
+    Skip(count: number): IQueryable<TSource>;
+    TakeWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    SkipWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource>;
+    Join<TInner, TKey, TResult>(inner: Iterable<TInner>, outerKeySelector: QuerySelector<TSource, TKey>, innerKeySelector: QuerySelector<TInner, TKey>, resultSelector: (outer: TSource, inner: TInner) => TResult, comparer: IEqualityCompararer<TKey>): IQueryable<TResult>;
+    Concat(other: Iterable<TSource>): IQueryable<TSource>;
+    Reverse(): IQueryable<TSource>;
+    GroupBy<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): IQueryable<IGrouping<TKey, TElement>>;
+    Distinct(comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Union(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Intersect(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    Except(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource>;
+    ToArray(): Array<TSource>;
+    AsIterable(): Iterable<TSource>;
+    ToMap<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): Map<TKey, TElement>;
+    OfType(type: "string" | "number" | "boolean" | "symbol" | "undefined" | "object" | "function"): IQueryable<TSource>;
+    Cast<TResult>(): IQueryable<TResult>;
+    SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityCompararer<TSource>): boolean;
+    First(predicate?: QueryPredicate<TSource>): TSource;
+    FirstOrDefault(def?: TSource, predicate?: QueryPredicate<TSource>): TSource | undefined;
+    Any(predicate?: QueryPredicate<TSource>): boolean;
+    private FromNexter;
+}

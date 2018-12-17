@@ -3,14 +3,11 @@
   "version": "1.0.0",
   "description": "LINQ For Typescript",
   "main": "index.js",
-  "types": "dist/index.d.ts",
   "directories": {
     "example": "examples"
   },
   "scripts": {
-    "build": "tsc",
-    "minify": "uglifyjs-folder ./dist -o ./dist/index.min.js --pattern \"**/*.js,!**/*min.js,!examples/**\" --config-file \"./uglify.json\"",
-    "watch": "tsc -w",
+    "build": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -27,9 +24,10 @@
   },
   "homepage": "https://github.com/TheTylerHuskins/LINQscript#readme",
   "devDependencies": {
+    "ts-loader": "^5.3.1",
     "typescript": "^3.2.2",
-    "uglify-js": "^3.4.4",
-    "uglifyjs-folder": "^1.5.1"
+    "webpack": "^4.27.1",
+    "webpack-cli": "^3.1.2"
   },
   "dependencies": {}
 }
