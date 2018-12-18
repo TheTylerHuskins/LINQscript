@@ -14,11 +14,13 @@ interface IPerson {
 }
 
 class LinqscriptTests {
-  private NumberArray: Array<number>;
+  private SimpleNumberArray: Array<number>;
+  private ComplexNumberArray: Array<number>;
   private OwnerArray: Array<IOwner>;
   private PersonArray: Array<IPerson>;
 
-  private NumberQuery: IQueryable<number>;
+  private SimpleNumberQuery: IQueryable<number>;
+  private ComplexNumberQuery: IQueryable<number>;
   private OwnerQuery: IQueryable<IOwner>;
   private PersonQuery: IQueryable<IPerson>;
 
@@ -26,7 +28,8 @@ class LinqscriptTests {
 
 
   public constructor() {
-    this.NumberArray = [1, 2, 3, 4];
+    this.SimpleNumberArray = [1, 2, 3, 4];
+    this.ComplexNumberArray = [1, 4, 8, 10, 10, 16, 54, 82, 82, 99];
     this.OwnerArray = [
       {
         Name: 'Bob',
@@ -90,7 +93,8 @@ class LinqscriptTests {
     );
 
 
-    this.NumberQuery = Query(this.NumberArray);
+    this.SimpleNumberQuery = Query(this.SimpleNumberArray);
+    this.ComplexNumberQuery = Query(this.ComplexNumberArray);
     this.OwnerQuery = Query(this.OwnerArray);
     this.PersonQuery = Query(this.PersonArray);
 
@@ -100,8 +104,8 @@ class LinqscriptTests {
   public RunSuite(): void {
     this.Log('=== Testing Failure Modes ==')
     this.ReportTest('ReportTest Fail', false, 'This test should fail');
-    this.ExecuteMatchTest('MatchTest Fail Length', this.NumberQuery, []);
-    this.ExecuteMatchTest('MatchTest Fail Values', this.NumberQuery, [2, 3, 4, 5]);
+    this.ExecuteMatchTest('MatchTest Fail Length', this.SimpleNumberQuery, []);
+    this.ExecuteMatchTest('MatchTest Fail Values', this.SimpleNumberQuery, [2, 3, 4, 5]);
     this.Log('=== End Testing Failure Modes ==')
 
     this.ReportTest('ReportTest Pass', true, null);
@@ -109,22 +113,25 @@ class LinqscriptTests {
     this.OperationalTests();
     this.SelectTests();
     this.WhereTests();
-    this.ChainTests();
     this.PartitioningTests();
     this.ConcatenationTest();
     this.OrderingTests();
+    this.SetTests();
+
+    // Test chaining operators
+    this.ChainTests();
 
   }
 
   public OperationalTests() {
     this.ExecuteMatchTest(
       'ToArray',
-      this.NumberQuery,
+      this.SimpleNumberQuery,
       [1, 2, 3, 4]
     );
     this.ReportTest(
       'Any',
-      this.NumberQuery.Any(),
+      this.SimpleNumberQuery.Any(),
       null
     );
     this.ReportTest(
@@ -137,7 +144,7 @@ class LinqscriptTests {
   public SelectTests(): void {
     this.ExecuteMatchTest(
       'Select Number',
-      this.NumberQuery.Select((item, index) => item + index),
+      this.SimpleNumberQuery.Select((item, index) => item + index),
       [1, 3, 5, 7]
     );
 
@@ -163,7 +170,7 @@ class LinqscriptTests {
   public WhereTests(): void {
     this.ExecuteMatchTest(
       'Where Number',
-      this.NumberQuery.Where((item, index) => item === 4 || index === 0),
+      this.SimpleNumberQuery.Where((item, index) => item === 4 || index === 0),
       [1, 4]
     );
     this.ExecuteMatchTest(
@@ -252,17 +259,17 @@ class LinqscriptTests {
   public PartitioningTests(): void {
     this.ExecuteMatchTest(
       'Skip',
-      this.NumberQuery.Skip(2),
+      this.SimpleNumberQuery.Skip(2),
       [3, 4]
     );
     this.ExecuteMatchTest(
       'Take',
-      this.NumberQuery.Take(2),
+      this.SimpleNumberQuery.Take(2),
       [1, 2]
     );
     this.ExecuteMatchTest(
       'Skip-Take',
-      this.NumberQuery.Skip(1).Take(2),
+      this.SimpleNumberQuery.Skip(1).Take(2),
       [2, 3]
     );
     this.ExecuteMatchTest(
@@ -280,7 +287,7 @@ class LinqscriptTests {
   private ConcatenationTest(): void {
     this.ExecuteMatchTest(
       'Concat',
-      this.NumberQuery.Concat([5, 6]),
+      this.SimpleNumberQuery.Concat([5, 6]),
       [1, 2, 3, 4, 5, 6]
     );
   }
@@ -288,9 +295,27 @@ class LinqscriptTests {
   private OrderingTests(): void {
     this.ExecuteMatchTest(
       'Reverse',
-      this.NumberQuery.Reverse(),
+      this.SimpleNumberQuery.Reverse(),
       [4, 3, 2, 1]
     )
+  }
+
+  private SetTests(): void {
+    this.ExecuteMatchTest(
+      'Distinct (default)',
+      this.ComplexNumberQuery.Distinct(),
+      [1, 4, 8, 10, 16, 54, 82, 99]
+    );
+    this.ExecuteMatchTest(
+      'Distinct (The only number in its 10\'s group)',
+      this.ComplexNumberQuery.Distinct((a, b) => Math.floor(a / 10.0) === Math.floor(b / 10.0)),
+      [1, 10, 54, 82, 99]
+    );
+    this.ExecuteMatchTest(
+      'Union',
+      this.SimpleNumberQuery.Union(this.ComplexNumberQuery.AsIterable()),
+      [1, 2, 3, 4, 8, 10, 16, 54, 82, 99]
+    );
   }
 
   private Log(msg: string, data?: any) {
@@ -344,11 +369,31 @@ export function Run() {
   // Expose Query() for testing
   (window as any).Query = Query;
 
-  const example1 = 'Query([4,10,34,100]).Select(a=>a*2).ToArray()';
-  const example2 = "Query(document.getElementsByTagName('head')).Take(1).SelectMany(head=>head.children).Where(elm=>elm instanceof HTMLScriptElement).Select(script=>script.src.replace('file:///','')).ToArray()";
+  const example1 = `Query([4,10,34,100]).Select(a=>a*2).ToArray()`;
+  const example2 = `Query(document.getElementsByTagName('head')).Take(1).SelectMany(head=>head.children).Where(elm=>elm instanceof HTMLScriptElement).Select(script=>script.src.replace('file:///','')).ToArray()`;
   console.info('');
   console.info('Query exposed to global scope. Example usage:');
   console.info(example1, eval(example1));
   console.info('Or, get script sources from <head>');
   console.info(example2, eval(example2));
+
+
+  const example3 = `
+  // Get the root node
+  Query([document.getRootNode()])
+  // Select all decendants
+  .SelectManyRecursive(i => i.children)
+  // Select all style properties
+  .SelectMany(elm =>
+    Query(Object.keys(elm.style))
+    // Ignore numeric keys
+    .Where(key => isNaN(Number(key)))
+    // Ignore empty values
+    .Where(key => elm.style[key] != '')
+    .Select(key => ({ Tag: elm, Style: key, Value: elm.style[key] }))
+    .AsIterable()
+  ).ToArray();
+  `;
+  console.log(example3, eval(example3));
+
 };

@@ -116,6 +116,33 @@ function Query(source) {
 
 /***/ }),
 
+/***/ "./src/lib/IQueryable.ts":
+/*!*******************************!*\
+  !*** ./src/lib/IQueryable.ts ***!
+  \*******************************/
+/*! exports provided: QueryPredicate, EqualityComparer */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "QueryPredicate", function() { return QueryPredicate; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "EqualityComparer", function() { return EqualityComparer; });
+;
+;
+;
+class QueryPredicate {
+}
+QueryPredicate.Always = () => true;
+QueryPredicate.Never = () => false;
+QueryPredicate.Truethy = (item) => !!item;
+QueryPredicate.Falsey = (item) => !item;
+class EqualityComparer {
+}
+EqualityComparer.Default = (a, b) => a === b;
+
+
+/***/ }),
+
 /***/ "./src/lib/Queryable.ts":
 /*!******************************!*\
   !*** ./src/lib/Queryable.ts ***!
@@ -126,9 +153,17 @@ function Query(source) {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Queryable", function() { return Queryable; });
-const NotImplemented = () => { throw new Error("Method not implemented."); };
+/* harmony import */ var _IQueryable__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./IQueryable */ "./src/lib/IQueryable.ts");
+
+;
+;
+const AssertArgument = (arg) => { if (arg == null) {
+    throw new Error("ArgumentNullException");
+} };
+const ThrowNotImplemented = () => { throw new Error("Method not implemented."); };
 class Queryable {
     constructor(source) {
+        AssertArgument(source);
         if (typeof (source) == 'function') {
             this.IITer = source;
         }
@@ -155,14 +190,33 @@ class Queryable {
         return new Queryable(() => source);
     }
     ForEach(callback) {
+        AssertArgument(callback);
         const source = this.IITer();
-        let result;
-        while (!(result = source.next()).done) {
+        for (let result = source.next(); !result.done; result = source.next()) {
             callback(result.value, result.index);
         }
         ;
     }
+    SelectManyRecursive(selector) {
+        AssertArgument(selector);
+        const stack = [];
+        const all = [];
+        this.SelectMany(selector).Reverse().ForEach(child => {
+            stack.push(child);
+        });
+        while (stack.length > 0) {
+            const item = stack.pop();
+            all.push(item);
+            Queryable.FromIterable(selector(item, -1))
+                .Reverse()
+                .ForEach(child => {
+                stack.push(child);
+            });
+        }
+        return Queryable.FromIterable(all);
+    }
     Where(predicate) {
+        AssertArgument(predicate);
         return this.FromNexter((source) => () => {
             let n;
             let passed = false;
@@ -174,6 +228,7 @@ class Queryable {
         });
     }
     Select(selector) {
+        AssertArgument(selector);
         return this.FromNexter((source) => () => {
             const n = source.next();
             return {
@@ -184,10 +239,12 @@ class Queryable {
         });
     }
     SelectMany(selector, resultSelector) {
+        AssertArgument(selector);
         return this.FromNexter((source) => {
             let outerResult;
             let innerCollection;
             let innerResult = { done: true, value: undefined };
+            let outputIndex = 0;
             return () => {
                 do {
                     if (innerResult.done) {
@@ -195,21 +252,23 @@ class Queryable {
                             return {
                                 value: undefined,
                                 done: true,
-                                index: outerResult.index
+                                index: outputIndex
                             };
                         }
                         innerCollection = selector(outerResult.value, outerResult.index)[Symbol.iterator]();
                     }
                 } while ((innerResult = innerCollection.next()).done);
+                ++outputIndex;
                 return {
-                    value: (resultSelector ? resultSelector(innerResult.value, outerResult.index) : innerResult.value),
+                    value: (resultSelector ? resultSelector(innerResult.value, outputIndex) : innerResult.value),
                     done: false,
-                    index: outerResult.index
+                    index: outputIndex
                 };
             };
         });
     }
     Take(count) {
+        AssertArgument(count);
         return this.FromNexter((source) => {
             let remaining = count;
             let lastIndex = -1;
@@ -231,12 +290,12 @@ class Queryable {
         });
     }
     Skip(count) {
+        AssertArgument(count);
         return this.FromNexter((source) => {
             let remaining = count;
             return () => {
-                while (remaining > 0) {
+                for (; remaining > 0; --remaining) {
                     source.next();
-                    --remaining;
                 }
                 ;
                 return source.next();
@@ -244,6 +303,7 @@ class Queryable {
         });
     }
     TakeWhile(predicate) {
+        AssertArgument(predicate);
         return this.FromNexter((source) => {
             let passed = true;
             let lastIndex = -1;
@@ -264,6 +324,7 @@ class Queryable {
         });
     }
     SkipWhile(predicate) {
+        AssertArgument(predicate);
         return this.FromNexter((source) => {
             let skipped = false;
             return () => {
@@ -277,9 +338,10 @@ class Queryable {
         });
     }
     Join(inner, outerKeySelector, innerKeySelector, resultSelector, comparer) {
-        return NotImplemented();
+        return ThrowNotImplemented();
     }
     Concat(other) {
+        AssertArgument(other);
         return this.FromNexter((source) => {
             const otherIter = other[Symbol.iterator]();
             let concatIndex = -1;
@@ -317,25 +379,50 @@ class Queryable {
         });
     }
     GroupBy(keySelector, elementSelector, comparer) {
-        return NotImplemented();
+        return ThrowNotImplemented();
     }
     Distinct(comparer) {
-        return NotImplemented();
+        comparer = comparer || _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default;
+        return new Queryable(() => {
+            const distinctValues = [];
+            const collapsedQuery = (new Queryable(this.ToArray()));
+            const collapsedIter = collapsedQuery.IITer();
+            let n = collapsedIter.next();
+            for (; !n.done; n = collapsedIter.next()) {
+                const hasDupe = collapsedQuery
+                    .TakeWhile((v, idx) => idx < n.index)
+                    .Any((v, idx) => comparer(n.value, v));
+                if (!hasDupe) {
+                    distinctValues.push(n.value);
+                }
+            }
+            ;
+            return (new Queryable(distinctValues)).IITer();
+        });
     }
     Union(other, comparer) {
-        return NotImplemented();
+        AssertArgument(other);
+        comparer = comparer || _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default;
+        const seen = [];
+        const seenQuery = Queryable.FromIterable(seen);
+        return this.Concat(other).Where((vCat) => {
+            const dupe = seenQuery.Any((vSeen) => comparer(vSeen, vCat));
+            if (!dupe) {
+                seen.push(vCat);
+            }
+            return !dupe;
+        });
     }
     Intersect(other, comparer) {
-        return NotImplemented();
+        return ThrowNotImplemented();
     }
     Except(other, comparer) {
-        return NotImplemented();
+        return ThrowNotImplemented();
     }
     ToArray() {
         const arr = [];
         const source = this.IITer();
-        let result;
-        while (!(result = source.next()).done) {
+        for (let result = source.next(); !result.done; result = source.next()) {
             arr.push(result.value);
         }
         ;
@@ -345,31 +432,27 @@ class Queryable {
         return { [Symbol.iterator]: () => this.IITer() };
     }
     ToMap(keySelector, elementSelector, comparer) {
-        return NotImplemented();
+        return ThrowNotImplemented();
     }
     OfType(type) {
-        return NotImplemented();
+        return ThrowNotImplemented();
     }
     Cast() {
-        return NotImplemented();
+        return ThrowNotImplemented();
     }
     SequenceEqual(other, comparer) {
-        return NotImplemented();
+        return ThrowNotImplemented();
     }
     First(predicate) {
         predicate = predicate || ((element) => true);
         const iiTer = this.IITer();
-        let n;
-        let passed = false;
-        do {
-            if (!(n = iiTer.next()).done) {
-                passed = predicate(n.value, n.index);
+        let n = iiTer.next();
+        for (; !n.done; n = iiTer.next()) {
+            if (predicate(n.value, n.index)) {
+                return n.value;
             }
-        } while (!passed && !n.done);
-        if (n.done) {
-            throw new Error("InvalidOperationException");
         }
-        return n.value;
+        throw new Error("InvalidOperationException");
     }
     FirstOrDefault(def, predicate) {
         predicate = predicate || ((element) => true);
