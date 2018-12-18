@@ -151,47 +151,47 @@ export class Queryable<TSource> implements IQueryable<TSource>{
     });
   }
 
-  Skip(count: number): IQueryable<TSource> {
+  public Skip(count: number): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  TakeWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource> {
+  public TakeWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  SkipWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource> {
+  public SkipWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  Join<TInner, TKey, TResult>(inner: Iterable<TInner>, outerKeySelector: QuerySelector<TSource, TKey>, innerKeySelector: QuerySelector<TInner, TKey>, resultSelector: (outer: TSource, inner: TInner) => TResult, comparer: IEqualityCompararer<TKey>): IQueryable<TResult> {
+  public Join<TInner, TKey, TResult>(inner: Iterable<TInner>, outerKeySelector: QuerySelector<TSource, TKey>, innerKeySelector: QuerySelector<TInner, TKey>, resultSelector: (outer: TSource, inner: TInner) => TResult, comparer: IEqualityCompararer<TKey>): IQueryable<TResult> {
     return NotImplemented();
   }
 
-  Concat(other: Iterable<TSource>): IQueryable<TSource> {
+  public Concat(other: Iterable<TSource>): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  Reverse(): IQueryable<TSource> {
+  public Reverse(): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  GroupBy<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): IQueryable<IGrouping<TKey, TElement>> {
+  public GroupBy<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): IQueryable<IGrouping<TKey, TElement>> {
     return NotImplemented();
   }
 
-  Distinct(comparer: IEqualityCompararer<TSource>): IQueryable<TSource> {
+  public Distinct(comparer: IEqualityCompararer<TSource>): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  Union(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource> {
+  public Union(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  Intersect(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource> {
+  public Intersect(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  Except(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource> {
+  public Except(other: Iterable<TSource>, comparer: IEqualityCompararer<TSource>): IQueryable<TSource> {
     return NotImplemented();
   }
 
@@ -207,27 +207,27 @@ export class Queryable<TSource> implements IQueryable<TSource>{
     return arr;
   }
 
-  AsIterable(): Iterable<TSource> {
+  public AsIterable(): Iterable<TSource> {
     return { [Symbol.iterator]: () => this.IITer() };
   }
 
-  ToMap<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): Map<TKey, TElement> {
+  public ToMap<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): Map<TKey, TElement> {
     return NotImplemented();
   }
 
-  OfType(type: "string" | "number" | "boolean" | "symbol" | "undefined" | "object" | "function"): IQueryable<TSource> {
+  public OfType(type: "string" | "number" | "boolean" | "symbol" | "undefined" | "object" | "function"): IQueryable<TSource> {
     return NotImplemented();
   }
 
-  Cast<TResult>(): IQueryable<TResult> {
+  public Cast<TResult>(): IQueryable<TResult> {
     return NotImplemented();
   }
 
-  SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityCompararer<TSource>): boolean {
+  public SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityCompararer<TSource>): boolean {
     return NotImplemented();
   }
 
-  First(predicate?: QueryPredicate<TSource>): TSource {
+  public First(predicate?: QueryPredicate<TSource>): TSource {
     predicate = predicate || ((element) => true);
     // Get new iter
     const iiTer = this.IITer();
@@ -243,7 +243,7 @@ export class Queryable<TSource> implements IQueryable<TSource>{
     return n.value;
   }
 
-  FirstOrDefault(def?: TSource, predicate?: QueryPredicate<TSource>): TSource | undefined {
+  public FirstOrDefault(def?: TSource, predicate?: QueryPredicate<TSource>): TSource | undefined {
     predicate = predicate || ((element) => true);
     // Get new iter
     const iiTer = this.IITer();
