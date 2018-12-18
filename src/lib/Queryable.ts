@@ -129,7 +129,7 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   public Take(count: number): IQueryable<TSource> {
     return this.FromNexter<TSource>((source) => {
       let remaining = count;
-      let lastIndex = 0;
+      let lastIndex = -1;
       return () => {
         // More to take?
         if (remaining-- > 0) {
@@ -162,11 +162,34 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public TakeWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource> {
-    return NotImplemented();
+    return this.FromNexter<TSource>((source) => {
+      let passed = true;
+      let lastIndex = -1;
+      return () => {
+        if (passed) {
+          const n = source.next();
+          passed = !n.done && predicate(n.value, n.index);
+          if (passed) { return n; }
+        }
+        // Took as many as can be taken
+        return {
+          done: true,
+          index: lastIndex,
+          value: undefined as any as TSource
+        }
+      }
+    });
   }
 
   public SkipWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource> {
-    return NotImplemented();
+    return this.FromNexter<TSource>((source) => {
+      return () => {
+        // Next until failure or done
+        let n: IteratorResultWithIndex<TSource>;
+        do { n = source.next(); } while (!n.done && predicate(n.value, n.index));
+        return n;
+      }
+    });
   }
 
   public Join<TInner, TKey, TResult>(inner: Iterable<TInner>, outerKeySelector: QuerySelector<TSource, TKey>, innerKeySelector: QuerySelector<TInner, TKey>, resultSelector: (outer: TSource, inner: TInner) => TResult, comparer: IEqualityCompararer<TKey>): IQueryable<TResult> {
