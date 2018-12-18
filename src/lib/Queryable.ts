@@ -127,7 +127,6 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public Take(count: number): IQueryable<TSource> {
-    // Return selection iterator
     return this.FromNexter<TSource>((source) => {
       let remaining = count;
       let lastIndex = 0;
@@ -152,7 +151,14 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public Skip(count: number): IQueryable<TSource> {
-    return NotImplemented();
+    return this.FromNexter<TSource>((source) => {
+      let remaining = count;
+      return () => {
+        // Next until no more to skip
+        while (remaining > 0) { source.next(); --remaining; };
+        return source.next();
+      }
+    });
   }
 
   public TakeWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource> {
