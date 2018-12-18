@@ -1,7 +1,8 @@
 import { IQueryable, IEqualityCompararer, IGrouping, QueryCallback, QueryPredicate, QuerySelector } from "./IQueryable";
 export declare class Queryable<TSource> implements IQueryable<TSource> {
     private IITer;
-    static From<T>(source: Iterable<T>): IQueryable<T>;
+    static FromIterable<T>(source: Iterable<T>): IQueryable<T>;
+    static FromIterator<T>(source: IndexedIterator<T>): IQueryable<T>;
     constructor(source: Iterable<TSource> | IndexedIteratorChain<TSource>);
     ForEach(callback: QueryCallback<TSource>): void;
     Where(predicate: QueryPredicate<TSource>): IQueryable<TSource>;

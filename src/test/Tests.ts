@@ -110,6 +110,9 @@ class LinqscriptTests {
     this.SelectTests();
     this.WhereTests();
     this.ChainTests();
+    this.PartitioningTests();
+    this.ConcatenationTest();
+    this.OrderingTests();
 
   }
 
@@ -244,6 +247,50 @@ class LinqscriptTests {
       nameLegacy.Select(p => p.Name),
       ['Alice']
     );
+  }
+
+  public PartitioningTests(): void {
+    this.ExecuteMatchTest(
+      'Skip',
+      this.NumberQuery.Skip(2),
+      [3, 4]
+    );
+    this.ExecuteMatchTest(
+      'Take',
+      this.NumberQuery.Take(2),
+      [1, 2]
+    );
+    this.ExecuteMatchTest(
+      'Skip-Take',
+      this.NumberQuery.Skip(1).Take(2),
+      [2, 3]
+    );
+    this.ExecuteMatchTest(
+      'TakeWhile',
+      this.OwnerQuery.TakeWhile((v) => v.Age > 10),
+      [this.OwnerArray[0], this.OwnerArray[1], this.OwnerArray[2]]
+    );
+    this.ExecuteMatchTest(
+      'SkipWhile',
+      this.OwnerQuery.SkipWhile((v) => v.Age > 10),
+      [this.OwnerArray[3], this.OwnerArray[4], this.OwnerArray[5]]
+    );
+  }
+
+  private ConcatenationTest(): void {
+    this.ExecuteMatchTest(
+      'Concat',
+      this.NumberQuery.Concat([5, 6]),
+      [1, 2, 3, 4, 5, 6]
+    );
+  }
+
+  private OrderingTests(): void {
+    this.ExecuteMatchTest(
+      'Reverse',
+      this.NumberQuery.Reverse(),
+      [4, 3, 2, 1]
+    )
   }
 
   private Log(msg: string, data?: any) {

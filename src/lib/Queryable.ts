@@ -20,8 +20,12 @@ export class Queryable<TSource> implements IQueryable<TSource>{
    */
   private IITer: IndexedIteratorChain<TSource>;
 
-  public static From<T>(source: Iterable<T>): IQueryable<T> {
+  public static FromIterable<T>(source: Iterable<T>): IQueryable<T> {
     return new Queryable(source);
+  }
+
+  public static FromIterator<T>(source: IndexedIterator<T>): IQueryable<T> {
+    return new Queryable(() => source);
   }
 
   public constructor(source: Iterable<TSource> | IndexedIteratorChain<TSource>) {
@@ -183,10 +187,12 @@ export class Queryable<TSource> implements IQueryable<TSource>{
 
   public SkipWhile(predicate: QueryPredicate<TSource>): IQueryable<TSource> {
     return this.FromNexter<TSource>((source) => {
+      let skipped = false;
       return () => {
         // Next until failure or done
         let n: IteratorResultWithIndex<TSource>;
-        do { n = source.next(); } while (!n.done && predicate(n.value, n.index));
+        do { n = source.next(); } while (!skipped && !n.done && predicate(n.value, n.index));
+        skipped = true;
         return n;
       }
     });
@@ -210,7 +216,7 @@ export class Queryable<TSource> implements IQueryable<TSource>{
         }
         if (!sourceHas && otherHas) {
           n = otherIter.next();
-          otherHas = n.done;
+          otherHas = !n.done;
         }
         if (sourceHas || otherHas) {
           return { done: false, index: concatIndex++, value: n!.value };
@@ -222,16 +228,14 @@ export class Queryable<TSource> implements IQueryable<TSource>{
 
   public Reverse(): IQueryable<TSource> {
     return this.FromNexter<TSource>((source) => {
-      let elems: Array<TSource> = [];
-      let n: IteratorResult<TSource>;
       // Collect
-      while (!(n = source.next()).done) { elems.push(n.value); }
+      let elems: Array<TSource> = Queryable.FromIterator(source).ToArray();
 
       // Loop/next
-      const mxi = elems.length - 1;
+      const mxi = elems.length;
       let idx = 0;
       return () => {
-        if (idx <= mxi) { idx++; return { done: false, index: idx, value: elems[mxi - idx] } }
+        if (idx < mxi) { idx++; return { done: false, index: idx, value: elems[mxi - idx] } }
         return { done: true, index: idx, value: undefined as any as TSource };
       };
     });

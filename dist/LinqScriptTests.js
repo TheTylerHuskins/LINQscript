@@ -139,15 +139,20 @@ class Queryable {
                 return {
                     next: () => {
                         let nextItem = sourceIterator.next();
-                        nextItem.index = sourceIndex++;
+                        if (!nextItem.done) {
+                            nextItem.index = sourceIndex++;
+                        }
                         return nextItem;
                     }
                 };
             };
         }
     }
-    static From(source) {
+    static FromIterable(source) {
         return new Queryable(source);
+    }
+    static FromIterator(source) {
+        return new Queryable(() => source);
     }
     ForEach(callback) {
         const source = this.IITer();
@@ -207,7 +212,7 @@ class Queryable {
     Take(count) {
         return this.FromNexter((source) => {
             let remaining = count;
-            let lastIndex = 0;
+            let lastIndex = -1;
             return () => {
                 if (remaining-- > 0) {
                     const n = source.next();
@@ -226,22 +231,90 @@ class Queryable {
         });
     }
     Skip(count) {
-        return NotImplemented();
+        return this.FromNexter((source) => {
+            let remaining = count;
+            return () => {
+                while (remaining > 0) {
+                    source.next();
+                    --remaining;
+                }
+                ;
+                return source.next();
+            };
+        });
     }
     TakeWhile(predicate) {
-        return NotImplemented();
+        return this.FromNexter((source) => {
+            let passed = true;
+            let lastIndex = -1;
+            return () => {
+                if (passed) {
+                    const n = source.next();
+                    passed = !n.done && predicate(n.value, n.index);
+                    if (passed) {
+                        return n;
+                    }
+                }
+                return {
+                    done: true,
+                    index: lastIndex,
+                    value: undefined
+                };
+            };
+        });
     }
     SkipWhile(predicate) {
-        return NotImplemented();
+        return this.FromNexter((source) => {
+            let skipped = false;
+            return () => {
+                let n;
+                do {
+                    n = source.next();
+                } while (!skipped && !n.done && predicate(n.value, n.index));
+                skipped = true;
+                return n;
+            };
+        });
     }
     Join(inner, outerKeySelector, innerKeySelector, resultSelector, comparer) {
         return NotImplemented();
     }
     Concat(other) {
-        return NotImplemented();
+        return this.FromNexter((source) => {
+            const otherIter = other[Symbol.iterator]();
+            let concatIndex = -1;
+            let sourceHas = true;
+            let otherHas = true;
+            return () => {
+                let n;
+                if (sourceHas) {
+                    n = source.next();
+                    sourceHas = !n.done;
+                }
+                if (!sourceHas && otherHas) {
+                    n = otherIter.next();
+                    otherHas = !n.done;
+                }
+                if (sourceHas || otherHas) {
+                    return { done: false, index: concatIndex++, value: n.value };
+                }
+                return { done: true, index: concatIndex, value: undefined };
+            };
+        });
     }
     Reverse() {
-        return NotImplemented();
+        return this.FromNexter((source) => {
+            let elems = Queryable.FromIterator(source).ToArray();
+            const mxi = elems.length;
+            let idx = 0;
+            return () => {
+                if (idx < mxi) {
+                    idx++;
+                    return { done: false, index: idx, value: elems[mxi - idx] };
+                }
+                return { done: true, index: idx, value: undefined };
+            };
+        });
     }
     GroupBy(keySelector, elementSelector, comparer) {
         return NotImplemented();
@@ -405,6 +478,9 @@ class LinqscriptTests {
         this.SelectTests();
         this.WhereTests();
         this.ChainTests();
+        this.PartitioningTests();
+        this.ConcatenationTest();
+        this.OrderingTests();
     }
     OperationalTests() {
         this.ExecuteMatchTest('ToArray', this.NumberQuery, [1, 2, 3, 4]);
@@ -442,6 +518,19 @@ class LinqscriptTests {
         this.ExecuteMatchTest('Chain: Grandchildren', grandChildren.Select(p => p.Name), ['Heather', 'Jeff', 'Alice', 'Rigney']);
         this.ExecuteMatchTest('Chain: Great Grandchildren', greatGrandChildren.Select(p => p.Name), ['Heather', 'Alice']);
         this.ExecuteMatchTest('Chain: Great-Grandchild Name Match', nameLegacy.Select(p => p.Name), ['Alice']);
+    }
+    PartitioningTests() {
+        this.ExecuteMatchTest('Skip', this.NumberQuery.Skip(2), [3, 4]);
+        this.ExecuteMatchTest('Take', this.NumberQuery.Take(2), [1, 2]);
+        this.ExecuteMatchTest('Skip-Take', this.NumberQuery.Skip(1).Take(2), [2, 3]);
+        this.ExecuteMatchTest('TakeWhile', this.OwnerQuery.TakeWhile((v) => v.Age > 10), [this.OwnerArray[0], this.OwnerArray[1], this.OwnerArray[2]]);
+        this.ExecuteMatchTest('SkipWhile', this.OwnerQuery.SkipWhile((v) => v.Age > 10), [this.OwnerArray[3], this.OwnerArray[4], this.OwnerArray[5]]);
+    }
+    ConcatenationTest() {
+        this.ExecuteMatchTest('Concat', this.NumberQuery.Concat([5, 6]), [1, 2, 3, 4, 5, 6]);
+    }
+    OrderingTests() {
+        this.ExecuteMatchTest('Reverse', this.NumberQuery.Reverse(), [4, 3, 2, 1]);
     }
     Log(msg, data) {
         this.OutputElement.innerText = this.OutputElement.innerText + '\r\n' + msg + (data ? ' :: ' + String(data) : '');
