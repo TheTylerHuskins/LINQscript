@@ -221,7 +221,20 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public Reverse(): IQueryable<TSource> {
-    return NotImplemented();
+    return this.FromNexter<TSource>((source) => {
+      let elems: Array<TSource> = [];
+      let n: IteratorResult<TSource>;
+      // Collect
+      while (!(n = source.next()).done) { elems.push(n.value); }
+
+      // Loop/next
+      const mxi = elems.length - 1;
+      let idx = 0;
+      return () => {
+        if (idx <= mxi) { idx++; return { done: false, index: idx, value: elems[mxi - idx] } }
+        return { done: true, index: idx, value: undefined as any as TSource };
+      };
+    });
   }
 
   public GroupBy<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): IQueryable<IGrouping<TKey, TElement>> {
