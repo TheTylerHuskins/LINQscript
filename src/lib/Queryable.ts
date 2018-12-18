@@ -92,48 +92,37 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   public SelectMany<TInner, TResult>(selector: QuerySelector<TSource, Iterable<TInner>>, resultSelector: QuerySelector<TInner, TResult>): IQueryable<TResult>;
   public SelectMany(selector: QuerySelector<any, Iterable<any>>, resultSelector?: QuerySelector<any, any>): IQueryable<any> {
     return this.FromNexter((source) => {
-      let outerItem: IteratorResultWithIndex<TSource> | undefined;
-      let innerCollection: Iterator<any> | undefined;
+      let outerResult: IteratorResultWithIndex<TSource>;
+      let innerCollection: Iterator<any>;
+      // Setup for first loop
+      let innerResult: IteratorResult<any> = { done: true, value: undefined };
 
-      const getNextInnerItem = (): IteratorResultWithIndex<any> => {
-        let innerItem: IteratorResult<any>;
-
-        // Get next outer item?
-        if (outerItem === undefined) {
-          outerItem = source.next();
-
-          // Hit the end of the outer items?
-          if (outerItem.done) {
-            return {
-              value: undefined,
-              done: true,
-              index: outerItem.index
-            };
+      return (): IteratorResultWithIndex<any> => {
+        do {
+          // Inner done?
+          if (innerResult.done) {
+            // Get next outer
+            if ((outerResult = source.next()).done) {
+              // Outer done.
+              return {
+                value: undefined,
+                done: true,
+                index: outerResult.index
+              };
+            }
+            // Get the inner collection
+            innerCollection = selector(outerResult.value, outerResult.index)[Symbol.iterator]();
           }
+          // Get next inner
+        } while ((innerResult = innerCollection.next()).done);
 
-          // Get the inner collection
-          innerCollection = selector(outerItem.value, outerItem.index)[Symbol.iterator]();
-        }
-
-        // Get the next inner item
-        innerItem = innerCollection!.next();
-
-        if (innerItem.done) {
-          // Hit the end of the inner items, get next outer item
-          outerItem = undefined;
-          innerCollection = undefined;
-          return getNextInnerItem();
-        }
-
-        // Return next inner item
+        // Return inner
         return {
-          value: (resultSelector ? resultSelector(innerItem.value, outerItem.index) : innerItem.value),
+          value: (resultSelector ? resultSelector(innerResult.value, outerResult.index) : innerResult.value),
           done: false,
-          index: outerItem.index
+          index: outerResult.index
         };
       };
-
-      return getNextInnerItem;
     });
   }
 
@@ -148,6 +137,7 @@ export class Queryable<TSource> implements IQueryable<TSource>{
           // Get next
           const n = source.next();
           lastIndex = n.index;
+          if (n.done) { remaining = 0; }
           return n;
         }
 
@@ -218,7 +208,7 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   AsIterable(): Iterable<TSource> {
-    return NotImplemented();
+    return { [Symbol.iterator]: () => this.IITer() };
   }
 
   ToMap<TKey, TElement>(keySelector: QuerySelector<TSource, TKey>, elementSelector: QuerySelector<TSource, TElement>, comparer: IEqualityCompararer<TKey>): Map<TKey, TElement> {

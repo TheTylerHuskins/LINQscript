@@ -180,34 +180,28 @@ class Queryable {
     }
     SelectMany(selector, resultSelector) {
         return this.FromNexter((source) => {
-            let outerItem;
+            let outerResult;
             let innerCollection;
-            const getNextInnerItem = () => {
-                let innerItem;
-                if (outerItem === undefined) {
-                    outerItem = source.next();
-                    if (outerItem.done) {
-                        return {
-                            value: undefined,
-                            done: true,
-                            index: outerItem.index
-                        };
+            let innerResult = { done: true, value: undefined };
+            return () => {
+                do {
+                    if (innerResult.done) {
+                        if ((outerResult = source.next()).done) {
+                            return {
+                                value: undefined,
+                                done: true,
+                                index: outerResult.index
+                            };
+                        }
+                        innerCollection = selector(outerResult.value, outerResult.index)[Symbol.iterator]();
                     }
-                    innerCollection = selector(outerItem.value, outerItem.index)[Symbol.iterator]();
-                }
-                innerItem = innerCollection.next();
-                if (innerItem.done) {
-                    outerItem = undefined;
-                    innerCollection = undefined;
-                    return getNextInnerItem();
-                }
+                } while ((innerResult = innerCollection.next()).done);
                 return {
-                    value: (resultSelector ? resultSelector(innerItem.value, outerItem.index) : innerItem.value),
+                    value: (resultSelector ? resultSelector(innerResult.value, outerResult.index) : innerResult.value),
                     done: false,
-                    index: outerItem.index
+                    index: outerResult.index
                 };
             };
-            return getNextInnerItem;
         });
     }
     Take(count) {
@@ -218,6 +212,9 @@ class Queryable {
                 if (remaining-- > 0) {
                     const n = source.next();
                     lastIndex = n.index;
+                    if (n.done) {
+                        remaining = 0;
+                    }
                     return n;
                 }
                 return {
@@ -272,7 +269,7 @@ class Queryable {
         return arr;
     }
     AsIterable() {
-        return NotImplemented();
+        return { [Symbol.iterator]: () => this.IITer() };
     }
     ToMap(keySelector, elementSelector, comparer) {
         return NotImplemented();
