@@ -197,7 +197,27 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public Concat(other: Iterable<TSource>): IQueryable<TSource> {
-    return NotImplemented();
+    return this.FromNexter<TSource>((source) => {
+      const otherIter = other[Symbol.iterator]();
+      let concatIndex = -1;
+      let sourceHas = true;
+      let otherHas = true;
+      return () => {
+        let n: IteratorResult<TSource>;
+        if (sourceHas) {
+          n = source.next();
+          sourceHas = !n.done;
+        }
+        if (!sourceHas && otherHas) {
+          n = otherIter.next();
+          otherHas = n.done;
+        }
+        if (sourceHas || otherHas) {
+          return { done: false, index: concatIndex++, value: n!.value };
+        }
+        return { done: true, index: concatIndex, value: undefined as any as TSource };
+      }
+    });
   }
 
   public Reverse(): IQueryable<TSource> {
