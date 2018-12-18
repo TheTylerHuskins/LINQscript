@@ -39,7 +39,7 @@ export class Queryable<TSource> implements IQueryable<TSource>{
           next: () => {
             // Get the next item
             let nextItem = sourceIterator.next() as IteratorResultWithIndex<TSource>;
-            nextItem.index = sourceIndex++;
+            if (!nextItem.done) { nextItem.index = sourceIndex++; }
             return nextItem;
           }
         };
