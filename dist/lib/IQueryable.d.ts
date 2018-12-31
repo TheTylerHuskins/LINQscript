@@ -48,5 +48,20 @@ export interface IQueryable<TSource> {
     SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): boolean;
     First(predicate?: IQueryPredicate<TSource>): TSource;
     FirstOrDefault(def?: TSource, predicate?: IQueryPredicate<TSource>): TSource | undefined;
+    Last(predicate?: IQueryPredicate<TSource>): TSource;
+    LastOrDefault(def?: TSource, predicate?: IQueryPredicate<TSource>): TSource | undefined;
+    Single(predicate?: IQueryPredicate<TSource>): TSource;
+    SingleOrDefault(def?: TSource, predicate?: IQueryPredicate<TSource>): TSource | undefined;
+    ElementAt(index: number): TSource;
+    ElementAtOrDefault(index: number, def?: TSource): TSource | undefined;
+    DefaultIfEmpty(def?: TSource): IQueryable<TSource | undefined>;
     Any(predicate?: IQueryPredicate<TSource>): boolean;
+    All(predicate: IQueryPredicate<TSource>): boolean;
+    Contains(value: TSource, comparer?: IEqualityComparer<TSource>): boolean;
+    Count(predicate?: IQueryPredicate<TSource>): number;
+    Sum(selector: IQuerySelector<TSource, number | undefined>): number;
+    Min<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
+    Max<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
+    Average(selector: IQuerySelector<TSource, number | undefined>): number;
+    Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource) => TAccumulate, seed?: TAccumulate, selector?: IQuerySelector<TAccumulate, TResult>): void;
 }

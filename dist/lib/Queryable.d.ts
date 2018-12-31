@@ -30,6 +30,21 @@ export declare class Queryable<TSource> implements IQueryable<TSource> {
     SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): boolean;
     First(predicate?: IQueryPredicate<TSource>): TSource;
     FirstOrDefault(def?: TSource, predicate?: IQueryPredicate<TSource>): TSource | undefined;
+    Last(predicate?: IQueryPredicate<TSource> | undefined): TSource;
+    LastOrDefault(def?: TSource | undefined, predicate?: IQueryPredicate<TSource> | undefined): TSource | undefined;
+    Single(predicate?: IQueryPredicate<TSource> | undefined): TSource;
+    SingleOrDefault(def?: TSource | undefined, predicate?: IQueryPredicate<TSource> | undefined): TSource | undefined;
+    ElementAt(index: number): TSource;
+    ElementAtOrDefault(index: number, def?: TSource | undefined): TSource | undefined;
+    DefaultIfEmpty(def?: TSource | undefined): IQueryable<TSource | undefined>;
     Any(predicate?: IQueryPredicate<TSource>): boolean;
+    All(predicate: IQueryPredicate<TSource>): boolean;
+    Contains(value: TSource, comparer?: IEqualityComparer<TSource> | undefined): boolean;
+    Count(predicate?: IQueryPredicate<TSource> | undefined): number;
+    Sum(selector: IQuerySelector<TSource, number | undefined>): number;
+    Min<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
+    Max<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
+    Average(selector: IQuerySelector<TSource, number | undefined>): number;
+    Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource) => TAccumulate, seed?: TAccumulate | undefined, selector?: IQuerySelector<TAccumulate, TResult> | undefined): void;
     private FromNexter;
 }

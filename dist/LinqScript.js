@@ -105,13 +105,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Query", function() { return Query; });
-/* harmony import */ var _lib_Queryable__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./lib/Queryable */ "./src/lib/Queryable.ts");
+/* harmony import */ var _lib_Query__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./lib/Query */ "./src/lib/Query.ts");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "Query", function() { return _lib_Query__WEBPACK_IMPORTED_MODULE_0__["Query"]; });
 
-function Query(source) {
-    return new _lib_Queryable__WEBPACK_IMPORTED_MODULE_0__["Queryable"](source);
-}
-;
+
 
 
 /***/ }),
@@ -143,6 +140,39 @@ EqualityComparer.Default = (a, b) => a === b;
 
 /***/ }),
 
+/***/ "./src/lib/Query.ts":
+/*!**************************!*\
+  !*** ./src/lib/Query.ts ***!
+  \**************************/
+/*! exports provided: Query */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Query", function() { return Query; });
+/* harmony import */ var _Queryable__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Queryable */ "./src/lib/Queryable.ts");
+
+function Query(source) {
+    return new _Queryable__WEBPACK_IMPORTED_MODULE_0__["Queryable"](source);
+}
+(function (Query) {
+    function Range(start, count) {
+        throw new Error("Method not implemented.");
+    }
+    Query.Range = Range;
+    function Repeat(count) {
+        throw new Error("Method not implemented.");
+    }
+    Query.Repeat = Repeat;
+    function Empty() {
+        return new _Queryable__WEBPACK_IMPORTED_MODULE_0__["Queryable"]([]);
+    }
+    Query.Empty = Empty;
+})(Query || (Query = {}));
+
+
+/***/ }),
+
 /***/ "./src/lib/Queryable.ts":
 /*!******************************!*\
   !*** ./src/lib/Queryable.ts ***!
@@ -158,7 +188,7 @@ __webpack_require__.r(__webpack_exports__);
 ;
 ;
 const AssertArgument = (arg) => { if (arg == null) {
-    throw new Error("ArgumentNullException");
+    throw new Error("ArgumentUndefinedException");
 } };
 const ThrowNotImplemented = () => { throw new Error("Method not implemented."); };
 class Queryable {
@@ -466,6 +496,27 @@ class Queryable {
         } while (!passed && !n.done);
         return n.done ? def : n.value;
     }
+    Last(predicate) {
+        throw new Error("Method not implemented.");
+    }
+    LastOrDefault(def, predicate) {
+        throw new Error("Method not implemented.");
+    }
+    Single(predicate) {
+        throw new Error("Method not implemented.");
+    }
+    SingleOrDefault(def, predicate) {
+        throw new Error("Method not implemented.");
+    }
+    ElementAt(index) {
+        throw new Error("Method not implemented.");
+    }
+    ElementAtOrDefault(index, def) {
+        throw new Error("Method not implemented.");
+    }
+    DefaultIfEmpty(def) {
+        throw new Error("Method not implemented.");
+    }
     Any(predicate) {
         predicate = predicate || (() => true);
         const source = this.IITer();
@@ -476,6 +527,30 @@ class Queryable {
         }
         ;
         return passed;
+    }
+    All(predicate) {
+        throw new Error("Method not implemented.");
+    }
+    Contains(value, comparer) {
+        throw new Error("Method not implemented.");
+    }
+    Count(predicate) {
+        throw new Error("Method not implemented.");
+    }
+    Sum(selector) {
+        throw new Error("Method not implemented.");
+    }
+    Min(selector) {
+        throw new Error("Method not implemented.");
+    }
+    Max(selector) {
+        throw new Error("Method not implemented.");
+    }
+    Average(selector) {
+        throw new Error("Method not implemented.");
+    }
+    Aggregate(func, seed, selector) {
+        throw new Error("Method not implemented.");
     }
     FromNexter(buildNexter) {
         return new Queryable(() => {

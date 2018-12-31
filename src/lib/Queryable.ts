@@ -11,7 +11,7 @@ interface QueryNexter<TResult> { (): IteratorResultWithIndex<TResult> };
  */
 interface QueryNexterBuilder<TSource, TResult> { (internalIterator: IndexedIterator<TSource>): QueryNexter<TResult> };
 
-const AssertArgument = (arg: any) => { if (arg == null) { throw new Error("ArgumentNullException"); } };
+const AssertArgument = (arg: any) => { if (arg == null) { throw new Error("ArgumentUndefinedException"); } };
 
 const ThrowNotImplemented = () => { throw new Error("Method not implemented.") };
 
@@ -420,6 +420,34 @@ export class Queryable<TSource> implements IQueryable<TSource>{
     return n.done ? def : n.value;
   }
 
+  Last(predicate?: IQueryPredicate<TSource> | undefined): TSource {
+    throw new Error("Method not implemented.");
+  }
+
+  LastOrDefault(def?: TSource | undefined, predicate?: IQueryPredicate<TSource> | undefined): TSource | undefined {
+    throw new Error("Method not implemented.");
+  }
+
+  Single(predicate?: IQueryPredicate<TSource> | undefined): TSource {
+    throw new Error("Method not implemented.");
+  }
+
+  SingleOrDefault(def?: TSource | undefined, predicate?: IQueryPredicate<TSource> | undefined): TSource | undefined {
+    throw new Error("Method not implemented.");
+  }
+
+  ElementAt(index: number): TSource {
+    throw new Error("Method not implemented.");
+  }
+
+  ElementAtOrDefault(index: number, def?: TSource | undefined): TSource | undefined {
+    throw new Error("Method not implemented.");
+  }
+
+  DefaultIfEmpty(def?: TSource | undefined): IQueryable<TSource | undefined> {
+    throw new Error("Method not implemented.");
+  }
+
   public Any(predicate?: IQueryPredicate<TSource>): boolean {
     predicate = predicate || (() => true);
     // Get new internal iterator
@@ -434,6 +462,37 @@ export class Queryable<TSource> implements IQueryable<TSource>{
     return passed;
   }
 
+  All(predicate: IQueryPredicate<TSource>): boolean {
+    throw new Error("Method not implemented.");
+  }
+
+  Contains(value: TSource, comparer?: IEqualityComparer<TSource> | undefined): boolean {
+    throw new Error("Method not implemented.");
+  }
+
+  Count(predicate?: IQueryPredicate<TSource> | undefined): number {
+    throw new Error("Method not implemented.");
+  }
+
+  Sum(selector: IQuerySelector<TSource, number | undefined>): number {
+    throw new Error("Method not implemented.");
+  }
+
+  Min<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined {
+    throw new Error("Method not implemented.");
+  }
+
+  Max<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined {
+    throw new Error("Method not implemented.");
+  }
+
+  Average(selector: IQuerySelector<TSource, number | undefined>): number {
+    throw new Error("Method not implemented.");
+  }
+
+  Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource) => TAccumulate, seed?: TAccumulate | undefined, selector?: IQuerySelector<TAccumulate, TResult> | undefined): void {
+    throw new Error("Method not implemented.");
+  }
 
   /**
    * Constructs a Queryable from the given Nexter Builder.
