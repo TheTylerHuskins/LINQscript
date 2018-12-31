@@ -29,8 +29,26 @@ export namespace Query {
    * MSDN: The Repeat operator allocates and returns an enumerable object that captures the arguments. An ArgumentOutOfRangeException is thrown if the specified count is less than zero. When the object returned by Repeat is enumerated, it yields count occurrences of element.
    * @param count
    */
-  export function Repeat(count: number): IQueryable<number> {
-    throw new Error('Method not implemented.');
+  export function Repeat<TResult>(element: TResult, count: number): IQueryable<TResult> {
+    if (count < 0) { throw new Error('ArgumentOUtOfRangeException'); }
+    return new Queryable(
+      () => {
+        const result = {
+          done: false,
+          index: -1,
+          value: element
+        };
+        return {
+          next: () => {
+            if (result.index++ >= count) {
+              result.done = true;
+              result.value = undefined as any as TResult;
+            }
+            return result;
+          }
+        };
+      }
+    );
   }
 
   /**
