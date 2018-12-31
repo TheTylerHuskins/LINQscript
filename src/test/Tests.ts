@@ -1,31 +1,31 @@
-import { Query, IQueryable } from '../index'
+// tslint:disable:completed-docs max-line-length no-console no-eval no-magic-numbers object-literal-sort-keys
 
+import { Query, IQueryable } from '../index';
 
 interface IOwner {
-  Name: string,
-  Age: number,
-  Registered: boolean,
-  Pets: Array<string>
+  Name: string;
+  Age: number;
+  Registered: boolean;
+  Pets: Array<string>;
 }
 
 interface IPerson {
-  Name: string,
-  Children: Array<IPerson>
+  Name: string;
+  Children: Array<IPerson>;
 }
 
 class LinqscriptTests {
-  private SimpleNumberArray: Array<number>;
-  private ComplexNumberArray: Array<number>;
-  private OwnerArray: Array<IOwner>;
-  private PersonArray: Array<IPerson>;
+  private readonly SimpleNumberArray: Array<number>;
+  private readonly ComplexNumberArray: Array<number>;
+  private readonly OwnerArray: Array<IOwner>;
+  private readonly PersonArray: Array<IPerson>;
 
-  private SimpleNumberQuery: IQueryable<number>;
-  private ComplexNumberQuery: IQueryable<number>;
-  private OwnerQuery: IQueryable<IOwner>;
-  private PersonQuery: IQueryable<IPerson>;
+  private readonly SimpleNumberQuery: IQueryable<number>;
+  private readonly ComplexNumberQuery: IQueryable<number>;
+  private readonly OwnerQuery: IQueryable<IOwner>;
+  private readonly PersonQuery: IQueryable<IPerson>;
 
-  private OutputElement: HTMLPreElement;
-
+  private readonly OutputElement: HTMLPreElement;
 
   public constructor() {
     this.SimpleNumberArray = [1, 2, 3, 4];
@@ -66,7 +66,7 @@ class LinqscriptTests {
         Age: 90,
         Registered: true,
         Pets: ['Tort']
-      },
+      }
     ];
 
     this.PersonArray = [];
@@ -92,23 +92,22 @@ class LinqscriptTests {
       this.CreatePerson('Steve')
     );
 
-
     this.SimpleNumberQuery = Query(this.SimpleNumberArray);
     this.ComplexNumberQuery = Query(this.ComplexNumberArray);
     this.OwnerQuery = Query(this.OwnerArray);
     this.PersonQuery = Query(this.PersonArray);
 
-    this.OutputElement = document.getElementById("TestResults") as HTMLPreElement;
+    this.OutputElement = document.getElementById('TestResults') as HTMLPreElement;
   }
 
   public RunSuite(): void {
-    this.Log('=== Testing Failure Modes ==')
+    this.Log('=== Testing Failure Modes ==');
     this.ReportTest('ReportTest Fail', false, 'This test should fail');
     this.ExecuteMatchTest('MatchTest Fail Length', this.SimpleNumberQuery, []);
     this.ExecuteMatchTest('MatchTest Fail Values', this.SimpleNumberQuery, [2, 3, 4, 5]);
-    this.Log('=== End Testing Failure Modes ==')
+    this.Log('=== End Testing Failure Modes ==');
 
-    this.ReportTest('ReportTest Pass', true, null);
+    this.ReportTest('ReportTest Pass', true, undefined);
 
     this.OperationalTests();
     this.SelectTests();
@@ -132,12 +131,12 @@ class LinqscriptTests {
     this.ReportTest(
       'Any',
       this.SimpleNumberQuery.Any(),
-      null
+      undefined
     );
     this.ReportTest(
       'Any Owner is 27',
-      this.OwnerQuery.Any(o => o.Age == 27),
-      null
+      this.OwnerQuery.Any((o) => o.Age === 27),
+      undefined
     );
   }
 
@@ -150,19 +149,19 @@ class LinqscriptTests {
 
     this.ExecuteMatchTest(
       'Select First Pet',
-      this.OwnerQuery.Select((owner) => owner.Pets.length > 0 ? owner.Pets[0] : null),
-      [null, 'Fluffy', 'Terror', 'Mr. Squawks', null, 'Tort']
+      this.OwnerQuery.Select((owner) => owner.Pets.length > 0 ? owner.Pets[0] : undefined),
+      [undefined, 'Fluffy', 'Terror', 'Mr. Squawks', undefined, 'Tort']
     );
 
     this.ExecuteMatchTest(
       'SelectMany All Pets',
-      this.OwnerQuery.SelectMany(owner => owner.Pets),
+      this.OwnerQuery.SelectMany((owner) => owner.Pets),
       ['Fluffy', 'Kitty', 'Gus', 'Terror', 'Butch', 'Mr. Squawks', 'Tort']
     );
 
     this.ExecuteMatchTest(
       'SelectMany All Pets, Select First letter',
-      this.OwnerQuery.SelectMany<string, any>(owner => owner.Pets, pname => pname[0]),
+      this.OwnerQuery.SelectMany<string, any>((owner) => owner.Pets, (pname) => pname[0]),
       ['F', 'K', 'G', 'T', 'B', 'M', 'T']
     );
   }
@@ -182,76 +181,80 @@ class LinqscriptTests {
 
   public ChainTests(): void {
     // Persons
-    const persons = this.PersonQuery.Select(p => p);
+    const persons = this.PersonQuery.Select((p) => p);
     // Persons with children
     const parents = persons
-      .Where(person => person.Children.length > 0);
+      .Where((person) => person.Children.length > 0);
 
     // Persons with grandchildren
     const grandParents = parents
-      .Where(person => Query(person.Children).Any(child => child.Children.length > 0));
+      .Where((person) => Query(person.Children)
+        .Any((child) => child.Children.length > 0));
 
     // Persons with great-grandchildren
     const greatGrandParents = grandParents
-      .Where(person => Query(person.Children)
-        .SelectMany(child => child.Children)
-        .Any(grandChild => grandChild.Children.length > 0)
+      .Where((person) => Query(person.Children)
+        .SelectMany((child) => child.Children)
+        .Any((grandChild) => grandChild.Children.length > 0)
       );
     // Where Any(p.Children.Children has Children)
 
     // Persons with parents
-    const children = parents.SelectMany(p => p.Children);
+    const children = parents.SelectMany((p) => p.Children);
 
     // Persons with grandparents
-    const grandChildren = children.SelectMany(c => c.Children);
+    const grandChildren = children.SelectMany((c) => c.Children);
 
     // Persons with great grandparents
-    const greatGrandChildren = grandChildren.SelectMany(gc => gc.Children);
+    const greatGrandChildren = grandChildren.SelectMany((gc) => gc.Children);
 
     // Persons who have a greatgrandchild with the same name as them
     const nameLegacy = greatGrandParents.Where(
-      p => Query(p.Children).SelectMany(child => child.Children).SelectMany(grandchild => grandchild.Children).Any(ggc => ggc.Name === p.Name)
+      (p) => Query(p.Children)
+        .SelectMany((child) => child.Children)
+        .SelectMany((grandchild) => grandchild.Children)
+        .Any((ggc) => ggc.Name === p.Name)
     );
     // Where p.Name = p.Child.Child.Child.Name
 
     this.ExecuteMatchTest(
       'Chain: Parents',
-      parents.Select(p => p.Name),
+      parents.Select((p) => p.Name),
       ['Jeff', 'Sally', 'Bob', 'Rigney', 'June', 'Alice']
     );
 
     this.ExecuteMatchTest(
       'Chain: Grandparents',
-      grandParents.Select(p => p.Name),
+      grandParents.Select((p) => p.Name),
       ['Sally', 'Bob', 'June', 'Alice']
     );
 
     this.ExecuteMatchTest(
       'Chain: Great Grandparents',
-      greatGrandParents.Select(p => p.Name),
+      greatGrandParents.Select((p) => p.Name),
       ['Bob', 'Alice']
     );
 
     this.ExecuteMatchTest(
       'Chain: Children',
-      children.Select(p => p.Name),
+      children.Select((p) => p.Name),
       ['Heather', 'Jeff', 'Sally', 'Mark', 'Alice', 'Rigney', 'June', 'Steve']
     );
 
     this.ExecuteMatchTest(
       'Chain: Grandchildren',
-      grandChildren.Select(p => p.Name),
+      grandChildren.Select((p) => p.Name),
       ['Heather', 'Jeff', 'Alice', 'Rigney']
     );
 
     this.ExecuteMatchTest(
       'Chain: Great Grandchildren',
-      greatGrandChildren.Select(p => p.Name),
+      greatGrandChildren.Select((p) => p.Name),
       ['Heather', 'Alice']
     );
     this.ExecuteMatchTest(
       'Chain: Great-Grandchild Name Match',
-      nameLegacy.Select(p => p.Name),
+      nameLegacy.Select((p) => p.Name),
       ['Alice']
     );
   }
@@ -269,7 +272,8 @@ class LinqscriptTests {
     );
     this.ExecuteMatchTest(
       'Skip-Take',
-      this.SimpleNumberQuery.Skip(1).Take(2),
+      this.SimpleNumberQuery.Skip(1)
+        .Take(2),
       [2, 3]
     );
     this.ExecuteMatchTest(
@@ -297,7 +301,7 @@ class LinqscriptTests {
       'Reverse',
       this.SimpleNumberQuery.Reverse(),
       [4, 3, 2, 1]
-    )
+    );
   }
 
   private SetTests(): void {
@@ -319,6 +323,7 @@ class LinqscriptTests {
   }
 
   private Log(msg: string, data?: any) {
+    // tslint:disable-next-line:prefer-template
     this.OutputElement.innerText = this.OutputElement.innerText + '\r\n' + msg + (data ? ' :: ' + String(data) : '');
     if (data) {
       console.log(msg, data);
@@ -347,9 +352,9 @@ class LinqscriptTests {
 
   private ReportTest(name: string, passed: boolean, relevantData: any) {
     if (!passed) {
-      this.Log('[FAIL] ' + name, relevantData);
+      this.Log(`[FAIL] ${name}`, relevantData);
     } else {
-      this.Log('[PASS] ' + name)
+      this.Log(`[PASS] ${name}`);
     }
   }
 
@@ -377,7 +382,6 @@ export function Run() {
   console.info('Or, get script sources from <head>');
   console.info(example2, eval(example2));
 
-
   const example3 = `
   // Get the root node
   Query([document.getRootNode()])
@@ -396,4 +400,4 @@ export function Run() {
   `;
   console.log(example3, eval(example3));
 
-};
+}

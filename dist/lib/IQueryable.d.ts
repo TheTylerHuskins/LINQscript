@@ -5,18 +5,18 @@ export interface IQueryCallback<TSource> extends IQuerySelector<TSource, void> {
 }
 export interface IQueryPredicate<TSource> extends IQuerySelector<TSource, boolean> {
 }
-export declare class QueryPredicate {
-    static Always: IQueryPredicate<any>;
-    static Never: IQueryPredicate<any>;
-    static Truethy: IQueryPredicate<any>;
-    static Falsey: IQueryPredicate<any>;
-}
+export declare let QueryPredicate: {
+    Always: IQueryPredicate<any>;
+    Never: IQueryPredicate<any>;
+    Truethy: IQueryPredicate<any>;
+    Falsey: IQueryPredicate<any>;
+};
 export interface IEqualityComparer<T> {
     (a: T, b: T): boolean;
 }
-export declare class EqualityComparer {
-    static Default: IEqualityComparer<any>;
-}
+export declare let EqualityComparer: {
+    Default: IEqualityComparer<any>;
+};
 export interface IGrouping<TKey, TElement> extends Array<TElement> {
     Key: TKey;
 }
@@ -43,7 +43,7 @@ export interface IQueryable<TSource> {
     ToArray(): Array<TSource>;
     AsIterable(): Iterable<TSource>;
     ToMap<TKey, TElement>(keySelector: IQuerySelector<TSource, TKey>, elementSelector?: IQuerySelector<TSource, TElement>, comparer?: IEqualityComparer<TKey>): Map<TKey, TElement>;
-    OfType(type: "boolean" | "function" | "number" | "object" | "string" | "symbol" | "undefined"): IQueryable<TSource>;
+    OfType(type: 'boolean' | 'function' | 'number' | 'object' | 'string' | 'symbol' | 'undefined'): IQueryable<TSource>;
     Cast<TResult>(): IQueryable<TResult>;
     SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): boolean;
     First(predicate?: IQueryPredicate<TSource>): TSource;
@@ -63,5 +63,5 @@ export interface IQueryable<TSource> {
     Min<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
     Max<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
     Average(selector: IQuerySelector<TSource, number | undefined>): number;
-    Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource) => TAccumulate, seed?: TAccumulate, selector?: IQuerySelector<TAccumulate, TResult>): void;
+    Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource) => TAccumulate, seed?: TAccumulate, selector?: IQuerySelector<TAccumulate, TResult>): TResult;
 }

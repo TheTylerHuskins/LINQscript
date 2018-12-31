@@ -124,18 +124,15 @@ __webpack_require__.r(__webpack_exports__);
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "QueryPredicate", function() { return QueryPredicate; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "EqualityComparer", function() { return EqualityComparer; });
-;
-;
-;
-class QueryPredicate {
-}
-QueryPredicate.Always = () => true;
-QueryPredicate.Never = () => false;
-QueryPredicate.Truethy = (item) => !!item;
-QueryPredicate.Falsey = (item) => !item;
-class EqualityComparer {
-}
-EqualityComparer.Default = (a, b) => a === b;
+let QueryPredicate = {
+    Always: (() => true),
+    Never: (() => false),
+    Truethy: ((item) => !!item),
+    Falsey: ((item) => !item)
+};
+let EqualityComparer = {
+    Default: ((a, b) => a === b)
+};
 
 
 /***/ }),
@@ -157,11 +154,11 @@ function Query(source) {
 }
 (function (Query) {
     function Range(start, count) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Query.Range = Range;
     function Repeat(count) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Query.Repeat = Repeat;
     function Empty() {
@@ -185,16 +182,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Queryable", function() { return Queryable; });
 /* harmony import */ var _IQueryable__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./IQueryable */ "./src/lib/IQueryable.ts");
 
-;
-;
 const AssertArgument = (arg) => { if (arg == null) {
-    throw new Error("ArgumentUndefinedException");
+    throw new Error('ArgumentUndefinedException');
 } };
-const ThrowNotImplemented = () => { throw new Error("Method not implemented."); };
+const ThrowNotImplemented = () => { throw new Error('Method not implemented.'); };
 class Queryable {
     constructor(source) {
         AssertArgument(source);
-        if (typeof (source) == 'function') {
+        if (typeof (source) === 'function') {
             this.IITer = source;
         }
         else {
@@ -203,7 +198,7 @@ class Queryable {
                 let sourceIndex = 0;
                 return {
                     next: () => {
-                        let nextItem = sourceIterator.next();
+                        const nextItem = sourceIterator.next();
                         if (!nextItem.done) {
                             nextItem.index = sourceIndex++;
                         }
@@ -225,13 +220,14 @@ class Queryable {
         for (let result = source.next(); !result.done; result = source.next()) {
             callback(result.value, result.index);
         }
-        ;
     }
     SelectManyRecursive(selector) {
         AssertArgument(selector);
         const stack = [];
         const all = [];
-        this.SelectMany(selector).Reverse().ForEach(child => {
+        this.SelectMany(selector)
+            .Reverse()
+            .ForEach((child) => {
             stack.push(child);
         });
         while (stack.length > 0) {
@@ -239,7 +235,7 @@ class Queryable {
             all.push(item);
             Queryable.FromIterable(selector(item, -1))
                 .Reverse()
-                .ForEach(child => {
+                .ForEach((child) => {
                 stack.push(child);
             });
         }
@@ -253,7 +249,6 @@ class Queryable {
             while (!passed && !(n = source.next()).done) {
                 passed = predicate(n.value, n.index);
             }
-            ;
             return n;
         });
     }
@@ -262,9 +257,9 @@ class Queryable {
         return this.FromNexter((source) => () => {
             const n = source.next();
             return {
-                value: (n.done ? undefined : selector(n.value, n.index)),
                 done: n.done,
-                index: n.index
+                index: n.index,
+                value: (n.done ? undefined : selector(n.value, n.index))
             };
         });
     }
@@ -280,9 +275,9 @@ class Queryable {
                     if (innerResult.done) {
                         if ((outerResult = source.next()).done) {
                             return {
-                                value: undefined,
                                 done: true,
-                                index: outputIndex
+                                index: outputIndex,
+                                value: undefined
                             };
                         }
                         innerCollection = selector(outerResult.value, outerResult.index)[Symbol.iterator]();
@@ -290,9 +285,9 @@ class Queryable {
                 } while ((innerResult = innerCollection.next()).done);
                 ++outputIndex;
                 return {
-                    value: (resultSelector ? resultSelector(innerResult.value, outputIndex) : innerResult.value),
                     done: false,
-                    index: outputIndex
+                    index: outputIndex,
+                    value: (resultSelector !== undefined ? resultSelector(innerResult.value, outputIndex) : innerResult.value)
                 };
             };
         });
@@ -327,7 +322,6 @@ class Queryable {
                 for (; remaining > 0; --remaining) {
                     source.next();
                 }
-                ;
                 return source.next();
             };
         });
@@ -342,6 +336,7 @@ class Queryable {
                     const n = source.next();
                     passed = !n.done && predicate(n.value, n.index);
                     if (passed) {
+                        lastIndex = n.index;
                         return n;
                     }
                 }
@@ -387,7 +382,7 @@ class Queryable {
                     n = otherIter.next();
                     otherHas = !n.done;
                 }
-                if (sourceHas || otherHas) {
+                if ((sourceHas || otherHas) && n !== undefined) {
                     return { done: false, index: concatIndex++, value: n.value };
                 }
                 return { done: true, index: concatIndex, value: undefined };
@@ -396,7 +391,8 @@ class Queryable {
     }
     Reverse() {
         return this.FromNexter((source) => {
-            let elems = Queryable.FromIterator(source).ToArray();
+            const elems = Queryable.FromIterator(source)
+                .ToArray();
             const mxi = elems.length;
             let idx = 0;
             return () => {
@@ -412,7 +408,7 @@ class Queryable {
         return ThrowNotImplemented();
     }
     Distinct(comparer) {
-        comparer = comparer || _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default;
+        const cmpFn = comparer !== undefined ? comparer : _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default;
         return new Queryable(() => {
             const distinctValues = [];
             const collapsedQuery = (new Queryable(this.ToArray()));
@@ -421,22 +417,22 @@ class Queryable {
             for (; !n.done; n = collapsedIter.next()) {
                 const hasDupe = collapsedQuery
                     .TakeWhile((v, idx) => idx < n.index)
-                    .Any((v, idx) => comparer(n.value, v));
+                    .Any((v, idx) => cmpFn(n.value, v));
                 if (!hasDupe) {
                     distinctValues.push(n.value);
                 }
             }
-            ;
             return (new Queryable(distinctValues)).IITer();
         });
     }
     Union(other, comparer) {
         AssertArgument(other);
-        comparer = comparer || _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default;
+        const cmpFn = (comparer !== undefined ? comparer : _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default);
         const seen = [];
         const seenQuery = Queryable.FromIterable(seen);
-        return this.Concat(other).Where((vCat) => {
-            const dupe = seenQuery.Any((vSeen) => comparer(vSeen, vCat));
+        return this.Concat(other)
+            .Where((vCat) => {
+            const dupe = seenQuery.Any((vSeen) => cmpFn(vSeen, vCat));
             if (!dupe) {
                 seen.push(vCat);
             }
@@ -455,7 +451,6 @@ class Queryable {
         for (let result = source.next(); !result.done; result = source.next()) {
             arr.push(result.value);
         }
-        ;
         return arr;
     }
     AsIterable() {
@@ -474,83 +469,82 @@ class Queryable {
         return ThrowNotImplemented();
     }
     First(predicate) {
-        predicate = predicate || ((element) => true);
+        const predFn = (predicate !== undefined ? predicate : (() => true));
         const iiTer = this.IITer();
         let n = iiTer.next();
         for (; !n.done; n = iiTer.next()) {
-            if (predicate(n.value, n.index)) {
+            if (predFn(n.value, n.index)) {
                 return n.value;
             }
         }
-        throw new Error("InvalidOperationException");
+        throw new Error('InvalidOperationException');
     }
     FirstOrDefault(def, predicate) {
-        predicate = predicate || ((element) => true);
+        const predFn = (predicate !== undefined ? predicate : (() => true));
         const iiTer = this.IITer();
         let n;
         let passed = false;
         do {
             if (!(n = iiTer.next()).done) {
-                passed = predicate(n.value, n.index);
+                passed = predFn(n.value, n.index);
             }
         } while (!passed && !n.done);
         return n.done ? def : n.value;
     }
     Last(predicate) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     LastOrDefault(def, predicate) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Single(predicate) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     SingleOrDefault(def, predicate) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     ElementAt(index) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     ElementAtOrDefault(index, def) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     DefaultIfEmpty(def) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Any(predicate) {
-        predicate = predicate || (() => true);
+        const predFn = (predicate !== undefined ? predicate : (() => true));
         const source = this.IITer();
         let n;
         let passed = false;
         while (!passed && !(n = source.next()).done) {
-            passed = predicate(n.value, n.index);
+            passed = predFn(n.value, n.index);
         }
-        ;
         return passed;
     }
     All(predicate) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Contains(value, comparer) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Count(predicate) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Sum(selector) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Min(selector) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Max(selector) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Average(selector) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     Aggregate(func, seed, selector) {
-        throw new Error("Method not implemented.");
+        throw new Error('Method not implemented.');
     }
     FromNexter(buildNexter) {
         return new Queryable(() => {
@@ -616,7 +610,7 @@ class LinqscriptTests {
                 Age: 90,
                 Registered: true,
                 Pets: ['Tort']
-            },
+            }
         ];
         this.PersonArray = [];
         this.CreatePerson('Bob', this.CreatePerson('Sally', this.CreatePerson('Jeff', this.CreatePerson('Heather'))), this.CreatePerson('Mark'));
@@ -625,7 +619,7 @@ class LinqscriptTests {
         this.ComplexNumberQuery = Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(this.ComplexNumberArray);
         this.OwnerQuery = Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(this.OwnerArray);
         this.PersonQuery = Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(this.PersonArray);
-        this.OutputElement = document.getElementById("TestResults");
+        this.OutputElement = document.getElementById('TestResults');
     }
     RunSuite() {
         this.Log('=== Testing Failure Modes ==');
@@ -633,7 +627,7 @@ class LinqscriptTests {
         this.ExecuteMatchTest('MatchTest Fail Length', this.SimpleNumberQuery, []);
         this.ExecuteMatchTest('MatchTest Fail Values', this.SimpleNumberQuery, [2, 3, 4, 5]);
         this.Log('=== End Testing Failure Modes ==');
-        this.ReportTest('ReportTest Pass', true, null);
+        this.ReportTest('ReportTest Pass', true, undefined);
         this.OperationalTests();
         this.SelectTests();
         this.WhereTests();
@@ -645,45 +639,50 @@ class LinqscriptTests {
     }
     OperationalTests() {
         this.ExecuteMatchTest('ToArray', this.SimpleNumberQuery, [1, 2, 3, 4]);
-        this.ReportTest('Any', this.SimpleNumberQuery.Any(), null);
-        this.ReportTest('Any Owner is 27', this.OwnerQuery.Any(o => o.Age == 27), null);
+        this.ReportTest('Any', this.SimpleNumberQuery.Any(), undefined);
+        this.ReportTest('Any Owner is 27', this.OwnerQuery.Any((o) => o.Age === 27), undefined);
     }
     SelectTests() {
         this.ExecuteMatchTest('Select Number', this.SimpleNumberQuery.Select((item, index) => item + index), [1, 3, 5, 7]);
-        this.ExecuteMatchTest('Select First Pet', this.OwnerQuery.Select((owner) => owner.Pets.length > 0 ? owner.Pets[0] : null), [null, 'Fluffy', 'Terror', 'Mr. Squawks', null, 'Tort']);
-        this.ExecuteMatchTest('SelectMany All Pets', this.OwnerQuery.SelectMany(owner => owner.Pets), ['Fluffy', 'Kitty', 'Gus', 'Terror', 'Butch', 'Mr. Squawks', 'Tort']);
-        this.ExecuteMatchTest('SelectMany All Pets, Select First letter', this.OwnerQuery.SelectMany(owner => owner.Pets, pname => pname[0]), ['F', 'K', 'G', 'T', 'B', 'M', 'T']);
+        this.ExecuteMatchTest('Select First Pet', this.OwnerQuery.Select((owner) => owner.Pets.length > 0 ? owner.Pets[0] : undefined), [undefined, 'Fluffy', 'Terror', 'Mr. Squawks', undefined, 'Tort']);
+        this.ExecuteMatchTest('SelectMany All Pets', this.OwnerQuery.SelectMany((owner) => owner.Pets), ['Fluffy', 'Kitty', 'Gus', 'Terror', 'Butch', 'Mr. Squawks', 'Tort']);
+        this.ExecuteMatchTest('SelectMany All Pets, Select First letter', this.OwnerQuery.SelectMany((owner) => owner.Pets, (pname) => pname[0]), ['F', 'K', 'G', 'T', 'B', 'M', 'T']);
     }
     WhereTests() {
         this.ExecuteMatchTest('Where Number', this.SimpleNumberQuery.Where((item, index) => item === 4 || index === 0), [1, 4]);
         this.ExecuteMatchTest('Where Object', this.OwnerQuery.Where((owner) => owner.Age > 30), [this.OwnerArray[0], this.OwnerArray[2], this.OwnerArray[4], this.OwnerArray[5]]);
     }
     ChainTests() {
-        const persons = this.PersonQuery.Select(p => p);
+        const persons = this.PersonQuery.Select((p) => p);
         const parents = persons
-            .Where(person => person.Children.length > 0);
+            .Where((person) => person.Children.length > 0);
         const grandParents = parents
-            .Where(person => Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(person.Children).Any(child => child.Children.length > 0));
+            .Where((person) => Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(person.Children)
+            .Any((child) => child.Children.length > 0));
         const greatGrandParents = grandParents
-            .Where(person => Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(person.Children)
-            .SelectMany(child => child.Children)
-            .Any(grandChild => grandChild.Children.length > 0));
-        const children = parents.SelectMany(p => p.Children);
-        const grandChildren = children.SelectMany(c => c.Children);
-        const greatGrandChildren = grandChildren.SelectMany(gc => gc.Children);
-        const nameLegacy = greatGrandParents.Where(p => Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(p.Children).SelectMany(child => child.Children).SelectMany(grandchild => grandchild.Children).Any(ggc => ggc.Name === p.Name));
-        this.ExecuteMatchTest('Chain: Parents', parents.Select(p => p.Name), ['Jeff', 'Sally', 'Bob', 'Rigney', 'June', 'Alice']);
-        this.ExecuteMatchTest('Chain: Grandparents', grandParents.Select(p => p.Name), ['Sally', 'Bob', 'June', 'Alice']);
-        this.ExecuteMatchTest('Chain: Great Grandparents', greatGrandParents.Select(p => p.Name), ['Bob', 'Alice']);
-        this.ExecuteMatchTest('Chain: Children', children.Select(p => p.Name), ['Heather', 'Jeff', 'Sally', 'Mark', 'Alice', 'Rigney', 'June', 'Steve']);
-        this.ExecuteMatchTest('Chain: Grandchildren', grandChildren.Select(p => p.Name), ['Heather', 'Jeff', 'Alice', 'Rigney']);
-        this.ExecuteMatchTest('Chain: Great Grandchildren', greatGrandChildren.Select(p => p.Name), ['Heather', 'Alice']);
-        this.ExecuteMatchTest('Chain: Great-Grandchild Name Match', nameLegacy.Select(p => p.Name), ['Alice']);
+            .Where((person) => Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(person.Children)
+            .SelectMany((child) => child.Children)
+            .Any((grandChild) => grandChild.Children.length > 0));
+        const children = parents.SelectMany((p) => p.Children);
+        const grandChildren = children.SelectMany((c) => c.Children);
+        const greatGrandChildren = grandChildren.SelectMany((gc) => gc.Children);
+        const nameLegacy = greatGrandParents.Where((p) => Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])(p.Children)
+            .SelectMany((child) => child.Children)
+            .SelectMany((grandchild) => grandchild.Children)
+            .Any((ggc) => ggc.Name === p.Name));
+        this.ExecuteMatchTest('Chain: Parents', parents.Select((p) => p.Name), ['Jeff', 'Sally', 'Bob', 'Rigney', 'June', 'Alice']);
+        this.ExecuteMatchTest('Chain: Grandparents', grandParents.Select((p) => p.Name), ['Sally', 'Bob', 'June', 'Alice']);
+        this.ExecuteMatchTest('Chain: Great Grandparents', greatGrandParents.Select((p) => p.Name), ['Bob', 'Alice']);
+        this.ExecuteMatchTest('Chain: Children', children.Select((p) => p.Name), ['Heather', 'Jeff', 'Sally', 'Mark', 'Alice', 'Rigney', 'June', 'Steve']);
+        this.ExecuteMatchTest('Chain: Grandchildren', grandChildren.Select((p) => p.Name), ['Heather', 'Jeff', 'Alice', 'Rigney']);
+        this.ExecuteMatchTest('Chain: Great Grandchildren', greatGrandChildren.Select((p) => p.Name), ['Heather', 'Alice']);
+        this.ExecuteMatchTest('Chain: Great-Grandchild Name Match', nameLegacy.Select((p) => p.Name), ['Alice']);
     }
     PartitioningTests() {
         this.ExecuteMatchTest('Skip', this.SimpleNumberQuery.Skip(2), [3, 4]);
         this.ExecuteMatchTest('Take', this.SimpleNumberQuery.Take(2), [1, 2]);
-        this.ExecuteMatchTest('Skip-Take', this.SimpleNumberQuery.Skip(1).Take(2), [2, 3]);
+        this.ExecuteMatchTest('Skip-Take', this.SimpleNumberQuery.Skip(1)
+            .Take(2), [2, 3]);
         this.ExecuteMatchTest('TakeWhile', this.OwnerQuery.TakeWhile((v) => v.Age > 10), [this.OwnerArray[0], this.OwnerArray[1], this.OwnerArray[2]]);
         this.ExecuteMatchTest('SkipWhile', this.OwnerQuery.SkipWhile((v) => v.Age > 10), [this.OwnerArray[3], this.OwnerArray[4], this.OwnerArray[5]]);
     }
@@ -728,10 +727,10 @@ class LinqscriptTests {
     }
     ReportTest(name, passed, relevantData) {
         if (!passed) {
-            this.Log('[FAIL] ' + name, relevantData);
+            this.Log(`[FAIL] ${name}`, relevantData);
         }
         else {
-            this.Log('[PASS] ' + name);
+            this.Log(`[PASS] ${name}`);
         }
     }
     CreatePerson(name, ...children) {
@@ -768,7 +767,6 @@ function Run() {
   `;
     console.log(example3, eval(example3));
 }
-;
 
 
 /***/ })

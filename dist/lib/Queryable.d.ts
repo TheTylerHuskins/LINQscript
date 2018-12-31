@@ -1,8 +1,8 @@
-import { IQueryable, IEqualityComparer, IGrouping, IQueryCallback, IQueryPredicate, IQuerySelector } from "./IQueryable";
+import { IQueryable, IEqualityComparer, IGrouping, IQueryCallback, IQueryPredicate, IQuerySelector } from './IQueryable';
 export declare class Queryable<TSource> implements IQueryable<TSource> {
-    private IITer;
     static FromIterable<T>(source: Iterable<T>): IQueryable<T>;
     static FromIterator<T>(source: IndexedIterator<T>): IQueryable<T>;
+    private readonly IITer;
     constructor(source: Iterable<TSource> | IndexedIteratorChain<TSource>);
     ForEach(callback: IQueryCallback<TSource>): void;
     SelectManyRecursive(selector: IQuerySelector<TSource, Iterable<TSource>>): IQueryable<TSource>;
@@ -18,14 +18,14 @@ export declare class Queryable<TSource> implements IQueryable<TSource> {
     Concat(other: Iterable<TSource>): IQueryable<TSource>;
     Reverse(): IQueryable<TSource>;
     GroupBy<TKey, TElement>(keySelector: IQuerySelector<TSource, TKey>, elementSelector: IQuerySelector<TSource, TElement>, comparer: IEqualityComparer<TKey>): IQueryable<IGrouping<TKey, TElement>>;
-    Distinct(comparer: IEqualityComparer<TSource>): IQueryable<TSource>;
-    Union(other: Iterable<TSource>, comparer: IEqualityComparer<TSource>): IQueryable<TSource>;
+    Distinct(comparer?: IEqualityComparer<TSource>): IQueryable<TSource>;
+    Union(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): IQueryable<TSource>;
     Intersect(other: Iterable<TSource>, comparer: IEqualityComparer<TSource>): IQueryable<TSource>;
     Except(other: Iterable<TSource>, comparer: IEqualityComparer<TSource>): IQueryable<TSource>;
     ToArray(): Array<TSource>;
     AsIterable(): Iterable<TSource>;
     ToMap<TKey, TElement>(keySelector: IQuerySelector<TSource, TKey>, elementSelector: IQuerySelector<TSource, TElement>, comparer: IEqualityComparer<TKey>): Map<TKey, TElement>;
-    OfType(type: "string" | "number" | "boolean" | "symbol" | "undefined" | "object" | "function"): IQueryable<TSource>;
+    OfType(type: 'string' | 'number' | 'boolean' | 'symbol' | 'undefined' | 'object' | 'function'): IQueryable<TSource>;
     Cast<TResult>(): IQueryable<TResult>;
     SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): boolean;
     First(predicate?: IQueryPredicate<TSource>): TSource;
@@ -45,6 +45,6 @@ export declare class Queryable<TSource> implements IQueryable<TSource> {
     Min<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
     Max<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
     Average(selector: IQuerySelector<TSource, number | undefined>): number;
-    Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource) => TAccumulate, seed?: TAccumulate | undefined, selector?: IQuerySelector<TAccumulate, TResult> | undefined): void;
+    Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource) => TAccumulate, seed?: TAccumulate | undefined, selector?: IQuerySelector<TAccumulate, TResult> | undefined): TResult;
     private FromNexter;
 }
