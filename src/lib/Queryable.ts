@@ -408,11 +408,35 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public Cast<TResult>(): IQueryable<TResult> {
-    return ThrowNotImplemented();
+    return this.Select((v) => v as any as TResult);
   }
 
   public SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): boolean {
-    return ThrowNotImplemented();
+    AssertArgument(other);
+
+    // Use default comparer if one is not given
+    const cmp = comparer || EqualityComparer.Default;
+
+    // Get both iterators
+    const myIter = this.IITer();
+    const otherIter = other[Symbol.iterator]();
+    while (true) {
+      const result1 = myIter.next();
+      const result2 = otherIter.next();
+
+      // Has one finished before the other?
+      if (result1.done !== result2.done) {
+        return false;
+      }
+
+      // Has the end of both been reached?
+      if (result1.done) {
+        return true;
+      }
+
+      // Check if the two values match
+      if (!cmp(result1.value, result2.value)) { return false; }
+    }
   }
 
   public First(predicate?: IQueryPredicate<TSource>): TSource {

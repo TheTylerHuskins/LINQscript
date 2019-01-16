@@ -20,7 +20,28 @@ export namespace Query {
    * @param count
    */
   export function Range(start: number, count: number): IQueryable<number> {
-    throw new Error('Method not implemented.');
+    if ((count < 0) || ((start + count + 1) > Number.MAX_SAFE_INTEGER)) {
+      throw new Error('ArgumentOutOfRangeException');
+    }
+
+    return new Queryable(
+      () => {
+        // Start at -1 because the first call to next() increments
+        let idx = -1;
+        return {
+          next: () => {
+            // Done when idx hits the count
+            const done = (idx >= count);
+            if (!done) { ++idx; }
+            return {
+              done,
+              index: idx,
+              value: start + idx
+            };
+          }
+        };
+      }
+    );
   }
 
   /**
@@ -35,7 +56,7 @@ export namespace Query {
       () => {
         const result = {
           done: false,
-          index: -1,
+          index: 0,
           value: element
         };
         return {

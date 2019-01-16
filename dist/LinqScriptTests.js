@@ -154,11 +154,47 @@ function Query(source) {
 }
 (function (Query) {
     function Range(start, count) {
-        throw new Error('Method not implemented.');
+        if ((count < 0) || ((start + count + 1) > Number.MAX_SAFE_INTEGER)) {
+            throw new Error('ArgumentOutOfRangeException');
+        }
+        return new _Queryable__WEBPACK_IMPORTED_MODULE_0__["Queryable"](() => {
+            let idx = -1;
+            return {
+                next: () => {
+                    const done = (idx >= count);
+                    if (!done) {
+                        ++idx;
+                    }
+                    return {
+                        done,
+                        index: idx,
+                        value: start + idx
+                    };
+                }
+            };
+        });
     }
     Query.Range = Range;
-    function Repeat(count) {
-        throw new Error('Method not implemented.');
+    function Repeat(element, count) {
+        if (count < 0) {
+            throw new Error('ArgumentOUtOfRangeException');
+        }
+        return new _Queryable__WEBPACK_IMPORTED_MODULE_0__["Queryable"](() => {
+            const result = {
+                done: false,
+                index: 0,
+                value: element
+            };
+            return {
+                next: () => {
+                    if (result.index++ >= count) {
+                        result.done = true;
+                        result.value = undefined;
+                    }
+                    return result;
+                }
+            };
+        });
     }
     Query.Repeat = Repeat;
     function Empty() {
@@ -463,10 +499,26 @@ class Queryable {
         return ThrowNotImplemented();
     }
     Cast() {
-        return ThrowNotImplemented();
+        return this.Select((v) => v);
     }
     SequenceEqual(other, comparer) {
-        return ThrowNotImplemented();
+        AssertArgument(other);
+        const cmp = comparer || _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default;
+        const myIter = this.IITer();
+        const otherIter = other[Symbol.iterator]();
+        while (true) {
+            const result1 = myIter.next();
+            const result2 = otherIter.next();
+            if (result1.done !== result2.done) {
+                return false;
+            }
+            if (result1.done) {
+                return true;
+            }
+            if (!cmp(result1.value, result2.value)) {
+                return false;
+            }
+        }
     }
     First(predicate) {
         const predFn = (predicate !== undefined ? predicate : (() => true));
@@ -628,6 +680,7 @@ class LinqscriptTests {
         this.ExecuteMatchTest('MatchTest Fail Values', this.SimpleNumberQuery, [2, 3, 4, 5]);
         this.Log('=== End Testing Failure Modes ==');
         this.ReportTest('ReportTest Pass', true, undefined);
+        this.StaticTests();
         this.OperationalTests();
         this.SelectTests();
         this.WhereTests();
@@ -635,12 +688,21 @@ class LinqscriptTests {
         this.ConcatenationTest();
         this.OrderingTests();
         this.SetTests();
+        this.EqualityTests();
         this.ChainTests();
     }
     OperationalTests() {
         this.ExecuteMatchTest('ToArray', this.SimpleNumberQuery, [1, 2, 3, 4]);
         this.ReportTest('Any', this.SimpleNumberQuery.Any(), undefined);
         this.ReportTest('Any Owner is 27', this.OwnerQuery.Any((o) => o.Age === 27), undefined);
+    }
+    StaticTests() {
+        const emptyQuery = _index__WEBPACK_IMPORTED_MODULE_0__["Query"].Empty();
+        const rangeQuery = _index__WEBPACK_IMPORTED_MODULE_0__["Query"].Range(1, 5);
+        const repeatQuery = _index__WEBPACK_IMPORTED_MODULE_0__["Query"].Repeat('Hello', 3);
+        this.ExecuteMatchTest('Empty', emptyQuery, []);
+        this.ExecuteMatchTest('Range', rangeQuery, [1, 2, 3, 4, 5, 6]);
+        this.ExecuteMatchTest('Repeat', repeatQuery, ['Hello', 'Hello', 'Hello']);
     }
     SelectTests() {
         this.ExecuteMatchTest('Select Number', this.SimpleNumberQuery.Select((item, index) => item + index), [1, 3, 5, 7]);
@@ -696,6 +758,11 @@ class LinqscriptTests {
         this.ExecuteMatchTest('Distinct (default)', this.ComplexNumberQuery.Distinct(), [1, 4, 8, 10, 16, 54, 82, 99]);
         this.ExecuteMatchTest('Distinct (The only number in its 10\'s group)', this.ComplexNumberQuery.Distinct((a, b) => Math.floor(a / 10.0) === Math.floor(b / 10.0)), [1, 10, 54, 82, 99]);
         this.ExecuteMatchTest('Union', this.SimpleNumberQuery.Union(this.ComplexNumberQuery.AsIterable()), [1, 2, 3, 4, 8, 10, 16, 54, 82, 99]);
+    }
+    EqualityTests() {
+        const query1 = Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])([1, 2, 3, 4]);
+        const query2 = Object(_index__WEBPACK_IMPORTED_MODULE_0__["Query"])([1, 2, 3, 4]);
+        this.ReportTest('SequenceEqual', query1.SequenceEqual(query2.AsIterable()), undefined);
     }
     Log(msg, data) {
         this.OutputElement.innerText = this.OutputElement.innerText + '\r\n' + msg + (data ? ' :: ' + String(data) : '');

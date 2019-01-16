@@ -109,6 +109,7 @@ class LinqscriptTests {
 
     this.ReportTest('ReportTest Pass', true, undefined);
 
+    this.StaticTests();
     this.OperationalTests();
     this.SelectTests();
     this.WhereTests();
@@ -116,6 +117,7 @@ class LinqscriptTests {
     this.ConcatenationTest();
     this.OrderingTests();
     this.SetTests();
+    this.EqualityTests();
 
     // Test chaining operators
     this.ChainTests();
@@ -138,6 +140,32 @@ class LinqscriptTests {
       this.OwnerQuery.Any((o) => o.Age === 27),
       undefined
     );
+  }
+
+  public StaticTests(): void {
+    const emptyQuery = Query.Empty();
+    const rangeQuery = Query.Range(1, 5);
+    const repeatQuery = Query.Repeat('Hello', 3);
+
+    this.ExecuteMatchTest(
+      'Empty',
+      emptyQuery,
+      []
+    );
+
+    this.ExecuteMatchTest(
+      'Range',
+      rangeQuery,
+      [1, 2, 3, 4, 5, 6]
+    );
+
+    this.ExecuteMatchTest(
+      'Repeat',
+      repeatQuery,
+      ['Hello', 'Hello', 'Hello']
+    );
+
+
   }
 
   public SelectTests(): void {
@@ -319,6 +347,17 @@ class LinqscriptTests {
       'Union',
       this.SimpleNumberQuery.Union(this.ComplexNumberQuery.AsIterable()),
       [1, 2, 3, 4, 8, 10, 16, 54, 82, 99]
+    );
+  }
+
+  private EqualityTests(): void {
+    const query1 = Query([1, 2, 3, 4]);
+    const query2 = Query([1, 2, 3, 4]);
+
+    this.ReportTest(
+      'SequenceEqual',
+      query1.SequenceEqual(query2.AsIterable()),
+      undefined
     );
   }
 
