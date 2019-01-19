@@ -23,6 +23,7 @@ export interface IGrouping<TKey, TElement> extends Array<TElement> {
 export interface IQueryable<TSource> {
     ForEach(callback: IQueryCallback<TSource>): void;
     SelectManyRecursive(selector: IQuerySelector<TSource, Iterable<TSource>>): IQueryable<TSource>;
+    Memoize(): IQueryable<TSource>;
     Where(predicate: IQueryPredicate<TSource>): IQueryable<TSource>;
     Select<TResult>(selector: IQuerySelector<TSource, TResult>): IQueryable<TResult>;
     SelectMany<TResult>(selector: IQuerySelector<TSource, Iterable<TResult>>): IQueryable<TResult>;
@@ -32,17 +33,17 @@ export interface IQueryable<TSource> {
     Skip(count: number): IQueryable<TSource>;
     TakeWhile(predicate: IQueryPredicate<TSource>): IQueryable<TSource>;
     SkipWhile(predicate: IQueryPredicate<TSource>): IQueryable<TSource>;
-    Join<TInner, TKey, TResult>(inner: Iterable<TInner>, outerKeySelector: IQuerySelector<TSource, TKey>, innerKeySelector: IQuerySelector<TInner, TKey>, resultSelector?: (outer: TSource, inner: TInner) => TResult, comparer?: IEqualityComparer<TKey>): IQueryable<TResult>;
+    Join<TInner, TKey, TResult>(inner: Iterable<TInner>, outerKeySelector: IQuerySelector<TSource, TKey>, innerKeySelector: IQuerySelector<TInner, TKey>, resultSelector?: (outer: TSource, inner: TInner) => TResult): IQueryable<TResult>;
     Concat(other: Iterable<TSource>): IQueryable<TSource>;
     Reverse(): IQueryable<TSource>;
-    GroupBy<TKey, TElement>(keySelector: IQuerySelector<TSource, TKey>, elementSelector: IQuerySelector<TSource, TElement>, comparer?: IEqualityComparer<TKey>): IQueryable<IGrouping<TKey, TElement>>;
+    GroupBy<TKey, TElement>(keySelector: IQuerySelector<TSource, TKey>, elementSelector: IQuerySelector<TSource, TElement>): IQueryable<IGrouping<TKey, TElement>>;
     Distinct(comparer?: IEqualityComparer<TSource>): IQueryable<TSource>;
     Union(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): IQueryable<TSource>;
     Intersect(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): IQueryable<TSource>;
     Except(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): IQueryable<TSource>;
     ToArray(): Array<TSource>;
     AsIterable(): Iterable<TSource>;
-    ToMap<TKey, TElement>(keySelector: IQuerySelector<TSource, TKey>, elementSelector?: IQuerySelector<TSource, TElement>, comparer?: IEqualityComparer<TKey>): Map<TKey, TElement>;
+    ToMap<TKey, TElement>(keySelector: IQuerySelector<TSource, TKey>, elementSelector?: IQuerySelector<TSource, TElement>): Map<TKey, TElement>;
     OfType(type: 'boolean' | 'function' | 'number' | 'object' | 'string' | 'symbol' | 'undefined'): IQueryable<TSource>;
     Cast<TResult>(): IQueryable<TResult>;
     SequenceEqual(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): boolean;
@@ -59,9 +60,9 @@ export interface IQueryable<TSource> {
     All(predicate: IQueryPredicate<TSource>): boolean;
     Contains(value: TSource, comparer?: IEqualityComparer<TSource>): boolean;
     Count(predicate?: IQueryPredicate<TSource>): number;
-    Sum(selector: IQuerySelector<TSource, number | undefined>): number;
-    Min<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
-    Max<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
-    Average(selector: IQuerySelector<TSource, number | undefined>): number;
-    Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource) => TAccumulate, seed?: TAccumulate, selector?: IQuerySelector<TAccumulate, TResult>): TResult;
+    Sum(selector?: IQuerySelector<TSource, number>): number;
+    Min<TResult>(selector?: IQuerySelector<TSource, TResult>): TResult | undefined;
+    Max<TResult>(selector?: IQuerySelector<TSource, TResult>): TResult | undefined;
+    Average(selector?: IQuerySelector<TSource, number>): number | undefined;
+    Aggregate<TAccumulate, TResult>(func: (accumulator: TAccumulate, element: TSource, index: number) => TAccumulate, seed?: TAccumulate, selector?: IQuerySelector<TAccumulate, TResult>): TResult;
 }

@@ -94,6 +94,18 @@ export interface IQueryable<TSource> {
    */
   SelectManyRecursive(selector: IQuerySelector<TSource, Iterable<TSource>>): IQueryable<TSource>;
 
+  /**
+   * Fully iterates the sequence into an array, and returns a new Queryable of that array.
+   * 
+   * Note that changes to the original data source will no longer be reflected in the memoized query.
+   *
+   * In effect:
+   * @example
+   * let snapshot = query.ToArray();
+   * return Query(snapshot);
+   */
+  Memoize(): IQueryable<TSource>;
+
   /* == Restriction Operators == */
 
   /**
@@ -175,10 +187,8 @@ export interface IQueryable<TSource> {
     inner: Iterable<TInner>,
     outerKeySelector: IQuerySelector<TSource, TKey>,
     innerKeySelector: IQuerySelector<TInner, TKey>,
-    resultSelector?: (outer: TSource, inner: TInner) => TResult,
-    comparer?: IEqualityComparer<TKey>
+    resultSelector?: (outer: TSource, inner: TInner) => TResult
   ): IQueryable<TResult>;
-  // TODO: Join overloads
 
   // TODO: GroupJoin. Yeah. This sounds fun.
 
@@ -201,6 +211,7 @@ export interface IQueryable<TSource> {
   // My question: How does ThenBy know what order OrderBy ordered by?!
   // Eg: OrderBy(A).ThenBy(B)
   // How does ThenBy not screw up the A ordering?
+  // C# IQuerable's OrderBy does not return an IQueryable, it returns an OrderedSequence
 
   /**
    * The Reverse operator reverses the elements of a sequence.
@@ -221,8 +232,7 @@ export interface IQueryable<TSource> {
    */
   GroupBy<TKey, TElement>(
     keySelector: IQuerySelector<TSource, TKey>,
-    elementSelector: IQuerySelector<TSource, TElement>,
-    comparer?: IEqualityComparer<TKey>
+    elementSelector: IQuerySelector<TSource, TElement>
   ): IQueryable<IGrouping<TKey, TElement>>;
   // TODO: GroupBy Overloads
 
@@ -277,15 +287,13 @@ export interface IQueryable<TSource> {
 
   /**
    *
-   * MSDN: The `ToMap` operator enumerates the source sequence and evaluates the keySelector and elementSelector functions for each element to produce that element's key and value. The resulting key and value pairs are returned in a `Map<TKey,TElement>`. If no elementSelector was specified, the value for each element is simply the element itself. An `"ArgumentUndefinedException"` is thrown if the source, keySelector, or elementSelector argument is undefined or if a key value produced by keySelector is undefined. An `"ArgumentException"` is thrown if keySelector produces a duplicate key value for two elements. In the resulting `Map`, key values are compared using the given comparer, or, if a undefined comparer was specified, using the default equality comparer, `===`.
+   * MSDN: The `ToMap` operator enumerates the source sequence and evaluates the keySelector and elementSelector functions for each element to produce that element's key and value. The resulting key and value pairs are returned in a `Map<TKey,TElement>`. If no elementSelector was specified, the value for each element is simply the element itself. An `"ArgumentUndefinedException"` is thrown if the keySelector argument is undefined or if a key value produced by keySelector is undefined. An `"ArgumentException"` is thrown if keySelector produces a duplicate key value for two elements.
    * @param keySelector
    * @param elementSelector
-   * @param comparer
    */
   ToMap<TKey, TElement>(
     keySelector: IQuerySelector<TSource, TKey>,
-    elementSelector?: IQuerySelector<TSource, TElement>,
-    comparer?: IEqualityComparer<TKey>
+    elementSelector?: IQuerySelector<TSource, TElement>
   ): Map<TKey, TElement>;
 
   // TODO: ToLookup?
@@ -460,7 +468,7 @@ export interface IQueryable<TSource> {
    * The Sum operator returns zero for an empty sequence. Furthermore, the operator does not include undefined values in the result.
    * @param selector
    */
-  Sum(selector: IQuerySelector<TSource, number | undefined>): number;
+  Sum(selector?: IQuerySelector<TSource, number>): number;
 
   /**
    * The Min operator finds the minimum of a sequence.
@@ -470,7 +478,7 @@ export interface IQueryable<TSource> {
    * The Min operator returns undefined for an empty sequence.
    * @param selector
    */
-  Min<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
+  Min<TResult>(selector?: IQuerySelector<TSource, TResult>): TResult | undefined;
 
   /**
    * The Max operator finds the maximum of a sequence.
@@ -480,17 +488,17 @@ export interface IQueryable<TSource> {
    * The Max operator returns undefined for an empty sequence.
    * @param selector
    */
-  Max<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined;
+  Max<TResult>(selector?: IQuerySelector<TSource, TResult>): TResult | undefined;
 
   /**
    * The Average operator computes the average of a sequence of numeric values.
    *
-   * MSDN: The Average operator enumerates the source sequence, invokes the selector function for each element, and computes the average of the resulting values. If no selector  function is specified, the average of the elements themselves is computed.
+   * MSDN: The Average operator enumerates the source sequence, invokes the selector function for each element, and computes the average of the resulting values. If no selector  function is specified, the average of the elements, as a Number, is computed.
    *
    * The Average operator returns undefined for an empty sequence. Furthermore, the operator does not include undefined values in the result.
    * @param selector
    */
-  Average(selector: IQuerySelector<TSource, number | undefined>): number;
+  Average(selector?: IQuerySelector<TSource, number>): number | undefined;
 
   /**
    * The Aggregate operator applies a function over a sequence.
@@ -503,7 +511,7 @@ export interface IQueryable<TSource> {
    * @param selector
    */
   Aggregate<TAccumulate, TResult>(
-    func: (accumulator: TAccumulate, element: TSource) => TAccumulate,
+    func: (accumulator: TAccumulate, element: TSource, index: number) => TAccumulate,
     seed?: TAccumulate,
     selector?: IQuerySelector<TAccumulate, TResult>
   ): TResult;

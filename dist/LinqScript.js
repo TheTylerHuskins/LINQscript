@@ -221,7 +221,7 @@ __webpack_require__.r(__webpack_exports__);
 const AssertArgument = (arg) => { if (arg == null) {
     throw new Error('ArgumentUndefinedException');
 } };
-const ThrowNotImplemented = () => { throw new Error('Method not implemented.'); };
+const ThrowNotImplemented = () => { throw new Error('Method not implemented!'); };
 class Queryable {
     constructor(source) {
         AssertArgument(source);
@@ -229,6 +229,7 @@ class Queryable {
             this.IITer = source;
         }
         else {
+            this.NativeSource = source;
             this.IITer = () => {
                 const sourceIterator = source[Symbol.iterator]();
                 let sourceIndex = 0;
@@ -276,6 +277,9 @@ class Queryable {
             });
         }
         return Queryable.FromIterable(all);
+    }
+    Memoize() {
+        return new Queryable(this.ToArray());
     }
     Where(predicate) {
         AssertArgument(predicate);
@@ -398,8 +402,30 @@ class Queryable {
             };
         });
     }
-    Join(inner, outerKeySelector, innerKeySelector, resultSelector, comparer) {
-        return ThrowNotImplemented();
+    Join(inner, outerKeySelector, innerKeySelector, resultSelector) {
+        AssertArgument(inner);
+        AssertArgument(outerKeySelector);
+        AssertArgument(innerKeySelector);
+        const resSel = resultSelector || ((o, i) => ({ Left: o, Right: i }));
+        return this.FromNexter((outerIter) => {
+            const innerMap = new Queryable(inner).ToMap(innerKeySelector, (item) => item);
+            let joinIdx = 0;
+            return () => {
+                for (let outerNext = outerIter.next(); !outerNext.done; outerNext = outerIter.next()) {
+                    const outerKey = outerKeySelector(outerNext.value, outerNext.index);
+                    if ((outerKey === undefined) || (!innerMap.has(outerKey))) {
+                        continue;
+                    }
+                    const innerValue = innerMap.get(outerKey);
+                    return {
+                        done: false,
+                        index: joinIdx++,
+                        value: resSel(outerNext.value, innerValue)
+                    };
+                }
+                return { done: true, index: joinIdx, value: undefined };
+            };
+        });
     }
     Concat(other) {
         AssertArgument(other);
@@ -440,8 +466,20 @@ class Queryable {
             };
         });
     }
-    GroupBy(keySelector, elementSelector, comparer) {
-        return ThrowNotImplemented();
+    GroupBy(keySelector, elementSelector) {
+        AssertArgument(keySelector);
+        const eSel = elementSelector || ((item) => item);
+        const groupMap = new Map();
+        this.ForEach((item, idx) => {
+            const key = keySelector(item, idx);
+            const element = eSel(item, idx);
+            let group = groupMap.get(key);
+            if (group === undefined) {
+                groupMap.set(key, group = Object.assign([], { Key: key }));
+            }
+            group.push(element);
+        });
+        return new Queryable(groupMap.values());
     }
     Distinct(comparer) {
         const cmpFn = comparer !== undefined ? comparer : _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default;
@@ -476,10 +514,16 @@ class Queryable {
         });
     }
     Intersect(other, comparer) {
-        return ThrowNotImplemented();
+        const distinctOther = new Queryable(other)
+            .Distinct(comparer)
+            .Memoize();
+        return this.Where((thisItem) => distinctOther.Contains(thisItem, comparer));
     }
     Except(other, comparer) {
-        return ThrowNotImplemented();
+        const distinctOther = new Queryable(other)
+            .Distinct(comparer)
+            .Memoize();
+        return this.Where((thisItem) => !distinctOther.Contains(thisItem, comparer));
     }
     ToArray() {
         const arr = [];
@@ -492,11 +536,22 @@ class Queryable {
     AsIterable() {
         return { [Symbol.iterator]: () => this.IITer() };
     }
-    ToMap(keySelector, elementSelector, comparer) {
-        return ThrowNotImplemented();
+    ToMap(keySelector, elementSelector) {
+        AssertArgument(keySelector);
+        const eSelect = elementSelector || ((item) => item);
+        const map = new Map();
+        this.ForEach((item, idx) => {
+            const key = keySelector(item, idx);
+            AssertArgument(key);
+            if (map.has(key)) {
+                throw new Error('ArgumentException:Duplicate Key');
+            }
+            map.set(key, eSelect(item, idx));
+        });
+        return map;
     }
     OfType(type) {
-        return ThrowNotImplemented();
+        return this.Where((item) => (typeof (item) === type));
     }
     Cast() {
         return this.Select((v) => v);
@@ -544,28 +599,31 @@ class Queryable {
         return n.done ? def : n.value;
     }
     Last(predicate) {
-        throw new Error('Method not implemented.');
+        return ThrowNotImplemented();
     }
     LastOrDefault(def, predicate) {
-        throw new Error('Method not implemented.');
+        return ThrowNotImplemented();
     }
     Single(predicate) {
-        throw new Error('Method not implemented.');
+        return ThrowNotImplemented();
     }
     SingleOrDefault(def, predicate) {
-        throw new Error('Method not implemented.');
+        return ThrowNotImplemented();
     }
     ElementAt(index) {
-        throw new Error('Method not implemented.');
+        return ThrowNotImplemented();
     }
     ElementAtOrDefault(index, def) {
-        throw new Error('Method not implemented.');
+        return ThrowNotImplemented();
     }
     DefaultIfEmpty(def) {
-        throw new Error('Method not implemented.');
+        return (this.Any() ? this : new Queryable([def]));
     }
     Any(predicate) {
         const predFn = (predicate !== undefined ? predicate : (() => true));
+        if (Array.isArray(this.NativeSource)) {
+            return this.NativeSource.some(predFn);
+        }
         const source = this.IITer();
         let n;
         let passed = false;
@@ -575,28 +633,79 @@ class Queryable {
         return passed;
     }
     All(predicate) {
-        throw new Error('Method not implemented.');
+        AssertArgument(predicate);
+        return !this.Any((item, idx) => !predicate(item, idx));
     }
     Contains(value, comparer) {
-        throw new Error('Method not implemented.');
+        const cmp = comparer || _IQueryable__WEBPACK_IMPORTED_MODULE_0__["EqualityComparer"].Default;
+        return this.Any((item) => cmp(value, item));
     }
     Count(predicate) {
-        throw new Error('Method not implemented.');
+        if ((this.NativeSource !== undefined) && (predicate === undefined)) {
+            if (Array.isArray(this.NativeSource)) {
+                return this.NativeSource.length;
+            }
+            else if (this.NativeSource instanceof Map) {
+                return this.NativeSource.size;
+            }
+            else if (typeof (this.NativeSource) === 'string') {
+                return this.NativeSource.length;
+            }
+        }
+        const filtered = (predicate === undefined) ? this : this.Where(predicate);
+        return filtered.Aggregate((acc, item, idx) => idx, -1) + 1;
     }
     Sum(selector) {
-        throw new Error('Method not implemented.');
+        if (!this.Any()) {
+            return 0;
+        }
+        return this.Select(selector || (Number))
+            .Aggregate((acc, item) => (acc + item));
     }
     Min(selector) {
-        throw new Error('Method not implemented.');
+        if (!this.Any()) {
+            return undefined;
+        }
+        return this.Select(selector || ((v) => v))
+            .Aggregate((acc, item) => ((acc < item) ? acc : item));
     }
     Max(selector) {
-        throw new Error('Method not implemented.');
+        if (!this.Any()) {
+            return undefined;
+        }
+        return this.Select(selector || ((v) => v))
+            .Aggregate((acc, item) => ((acc > item) ? acc : item));
     }
     Average(selector) {
-        throw new Error('Method not implemented.');
+        if (!this.Any()) {
+            return undefined;
+        }
+        return this.Select(selector || (Number))
+            .Aggregate((acc, item) => (acc + item), 0, (acc, idx) => acc / (idx + 1));
     }
     Aggregate(func, seed, selector) {
-        throw new Error('Method not implemented.');
+        AssertArgument(func);
+        const finalConverter = selector || ((v) => v);
+        const iter = this.IITer();
+        let iterResult = iter.next();
+        let idx = -1;
+        let accumulator;
+        if (seed !== undefined) {
+            accumulator = seed;
+        }
+        else {
+            if (iterResult.done) {
+                throw new Error('InvalidOperationException');
+            }
+            accumulator = iterResult.value;
+            ++idx;
+            iterResult = iter.next();
+        }
+        while (!iterResult.done) {
+            accumulator = func(accumulator, iterResult.value, ++idx);
+            iterResult = iter.next();
+        }
+        return finalConverter(accumulator, idx);
     }
     FromNexter(buildNexter) {
         return new Queryable(() => {

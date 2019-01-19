@@ -13,7 +13,7 @@ interface IQueryNexterBuilder<TSource, TResult> { (internalIterator: IndexedIter
 // tslint:disable-next-line:no-null-keyword triple-equals
 const AssertArgument = (arg: any) => { if (arg == null) { throw new Error('ArgumentUndefinedException'); } };
 
-const ThrowNotImplemented = () => { throw new Error('Method not implemented.'); };
+const ThrowNotImplemented = () => { throw new Error('Method not implemented!'); };
 
 /**
  *
@@ -48,6 +48,11 @@ export class Queryable<TSource> implements IQueryable<TSource>{
    */
   private readonly IITer: IndexedIteratorChain<TSource>;
 
+  /**
+   * If set, the source of this queryable is a native datastructure
+   */
+  private readonly NativeSource?: Array<any> | Map<any, any> | string;
+
   public constructor(source: Iterable<TSource> | IndexedIteratorChain<TSource>) {
     AssertArgument(source);
 
@@ -55,6 +60,7 @@ export class Queryable<TSource> implements IQueryable<TSource>{
       // Source has already been setup
       this.IITer = source;
     } else {
+      this.NativeSource = source as any;
       this.IITer = () => {
         // Get the source iterator
         const sourceIterator: Iterator<TSource> = source[Symbol.iterator]();
@@ -107,6 +113,10 @@ export class Queryable<TSource> implements IQueryable<TSource>{
     }
 
     return Queryable.FromIterable(all);
+  }
+
+  public Memoize(): IQueryable<TSource> {
+    return new Queryable(this.ToArray());
   }
 
   public Where(predicate: IQueryPredicate<TSource>): IQueryable<TSource> {
@@ -272,10 +282,45 @@ export class Queryable<TSource> implements IQueryable<TSource>{
     inner: Iterable<TInner>,
     outerKeySelector: IQuerySelector<TSource, TKey>,
     innerKeySelector: IQuerySelector<TInner, TKey>,
-    resultSelector: (outer: TSource, inner: TInner) => TResult,
-    comparer: IEqualityComparer<TKey>
+    resultSelector?: (outer: TSource, inner: TInner) => TResult
   ): IQueryable<TResult> {
-    return ThrowNotImplemented();
+    AssertArgument(inner);
+    AssertArgument(outerKeySelector);
+    AssertArgument(innerKeySelector);
+
+    // Ensure result selector
+    const resSel = resultSelector || ((o, i) => ({ Left: o, Right: i } as any as TResult));
+
+    return this.FromNexter((outerIter) => {
+      // Convert the inner to a map
+      const innerMap = new Queryable(inner).ToMap(innerKeySelector, (item) => item);
+
+      let joinIdx: number = 0;
+
+      return () => {
+
+        for (let outerNext = outerIter.next(); !outerNext.done; outerNext = outerIter.next()) {
+          // Get the outer key
+          const outerKey = outerKeySelector(outerNext.value, outerNext.index);
+
+          // Skip if no outer key or outer key is not in the inner map
+          if ((outerKey === undefined) || (!innerMap.has(outerKey))) { continue; }
+
+          // tslint:disable-next-line:no-non-null-assertion
+          const innerValue = innerMap.get(outerKey)!;
+
+          // Found match
+          return {
+            done: false,
+            index: joinIdx++,
+            value: resSel(outerNext.value, innerValue)
+          };
+        }
+
+        // All done
+        return { done: true, index: joinIdx, value: undefined as any as TResult };
+      };
+    });
   }
 
   public Concat(other: Iterable<TSource>): IQueryable<TSource> {
@@ -322,10 +367,27 @@ export class Queryable<TSource> implements IQueryable<TSource>{
 
   public GroupBy<TKey, TElement>(
     keySelector: IQuerySelector<TSource, TKey>,
-    elementSelector: IQuerySelector<TSource, TElement>,
-    comparer: IEqualityComparer<TKey>
+    elementSelector?: IQuerySelector<TSource, TElement>
   ): IQueryable<IGrouping<TKey, TElement>> {
-    return ThrowNotImplemented();
+    AssertArgument(keySelector);
+
+    // Ensure element selector
+    const eSel: IQuerySelector<TSource, TElement> = elementSelector || ((item) => item as any as TElement);
+
+    const groupMap = new Map<TKey, IGrouping<TKey, TElement>>();
+
+    this.ForEach((item, idx) => {
+      const key = keySelector(item, idx);
+      const element = eSel(item, idx);
+      let group = groupMap.get(key);
+      if (group === undefined) {
+        // tslint:disable-next-line:prefer-object-spread
+        groupMap.set(key, group = Object.assign([], { Key: key }));
+      }
+      group.push(element);
+    });
+
+    return new Queryable(groupMap.values());
   }
 
   public Distinct(comparer?: IEqualityComparer<TSource>): IQueryable<TSource> {
@@ -371,11 +433,23 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public Intersect(other: Iterable<TSource>, comparer: IEqualityComparer<TSource>): IQueryable<TSource> {
-    return ThrowNotImplemented();
+    // Get the distinct values from other
+    const distinctOther = new Queryable(other)
+      .Distinct(comparer)
+      .Memoize();
+
+    // Return any item in this that is also in other
+    return this.Where((thisItem) => distinctOther.Contains(thisItem, comparer));
   }
 
-  public Except(other: Iterable<TSource>, comparer: IEqualityComparer<TSource>): IQueryable<TSource> {
-    return ThrowNotImplemented();
+  public Except(other: Iterable<TSource>, comparer?: IEqualityComparer<TSource>): IQueryable<TSource> {
+    // Get the distinct values from other
+    const distinctOther = new Queryable(other)
+      .Distinct(comparer)
+      .Memoize();
+
+    // Return any item in this, except those also in other
+    return this.Where((thisItem) => !distinctOther.Contains(thisItem, comparer));
   }
 
   public ToArray(): Array<TSource> {
@@ -395,16 +469,35 @@ export class Queryable<TSource> implements IQueryable<TSource>{
 
   public ToMap<TKey, TElement>(
     keySelector: IQuerySelector<TSource, TKey>,
-    elementSelector: IQuerySelector<TSource, TElement>,
-    comparer: IEqualityComparer<TKey>
+    elementSelector?: IQuerySelector<TSource, TElement>
   ): Map<TKey, TElement> {
-    return ThrowNotImplemented();
+    AssertArgument(keySelector);
+    // Ensure element selector
+    const eSelect: IQuerySelector<TSource, TElement> = elementSelector || ((item) => item as any as TElement);
+
+    // Create the map
+    const map = new Map<TKey, TElement>();
+
+    this.ForEach((item, idx) => {
+      // Get the key
+      const key = keySelector(item, idx);
+
+      // Ensure the key is not undefined
+      AssertArgument(key);
+
+      // Ensure unique key
+      if (map.has(key)) { throw new Error('ArgumentException:Duplicate Key'); }
+
+      // Add to map
+      map.set(key, eSelect(item, idx));
+    });
+    return map;
   }
 
   public OfType(
     type: 'string' | 'number' | 'boolean' | 'symbol' | 'undefined' | 'object' | 'function'
   ): IQueryable<TSource> {
-    return ThrowNotImplemented();
+    return this.Where((item) => (typeof (item) === type));
   }
 
   public Cast<TResult>(): IQueryable<TResult> {
@@ -469,41 +562,46 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public Last(predicate?: IQueryPredicate<TSource> | undefined): TSource {
-    throw new Error('Method not implemented.');
+    return ThrowNotImplemented();
   }
 
   public LastOrDefault(
     def?: TSource | undefined,
     predicate?: IQueryPredicate<TSource> | undefined
   ): TSource | undefined {
-    throw new Error('Method not implemented.');
+    return ThrowNotImplemented();
   }
 
   public Single(predicate?: IQueryPredicate<TSource> | undefined): TSource {
-    throw new Error('Method not implemented.');
+    return ThrowNotImplemented();
   }
 
   public SingleOrDefault(
     def?: TSource | undefined,
     predicate?: IQueryPredicate<TSource> | undefined
   ): TSource | undefined {
-    throw new Error('Method not implemented.');
+    return ThrowNotImplemented();
   }
 
   public ElementAt(index: number): TSource {
-    throw new Error('Method not implemented.');
+    return ThrowNotImplemented();
   }
 
   public ElementAtOrDefault(index: number, def?: TSource | undefined): TSource | undefined {
-    throw new Error('Method not implemented.');
+    return ThrowNotImplemented();
   }
 
-  public DefaultIfEmpty(def?: TSource | undefined): IQueryable<TSource | undefined> {
-    throw new Error('Method not implemented.');
+  public DefaultIfEmpty(def?: TSource): IQueryable<TSource | undefined> {
+    return (this.Any() ? this : new Queryable([def]));
   }
 
   public Any(predicate?: IQueryPredicate<TSource>): boolean {
     const predFn = (predicate !== undefined ? predicate : (() => true));
+
+    if (Array.isArray(this.NativeSource)) {
+      return this.NativeSource.some(predFn);
+    }
+
     // Get new internal iterator
     const source = this.IITer();
 
@@ -517,39 +615,105 @@ export class Queryable<TSource> implements IQueryable<TSource>{
   }
 
   public All(predicate: IQueryPredicate<TSource>): boolean {
-    throw new Error('Method not implemented.');
+    AssertArgument(predicate);
+    // False if any element passes the anti-predicate
+    // True if no element passes the anti-predicate
+    return !this.Any((item, idx) => !predicate(item, idx));
   }
 
   public Contains(value: TSource, comparer?: IEqualityComparer<TSource> | undefined): boolean {
-    throw new Error('Method not implemented.');
+    const cmp = comparer || EqualityComparer.Default;
+    return this.Any((item) => cmp(value, item));
   }
 
   public Count(predicate?: IQueryPredicate<TSource> | undefined): number {
-    throw new Error('Method not implemented.');
+    if ((this.NativeSource !== undefined) && (predicate === undefined)) {
+      if (Array.isArray(this.NativeSource)) {
+        return this.NativeSource.length;
+      } else if (this.NativeSource instanceof Map) {
+        return this.NativeSource.size;
+      } else if (typeof (this.NativeSource) === 'string') {
+        return this.NativeSource.length;
+      }
+    }
+    const filtered = (predicate === undefined) ? this : this.Where(predicate);
+
+    return filtered.Aggregate<number, number>((acc, item, idx) => idx, -1) + 1;
   }
 
-  public Sum(selector: IQuerySelector<TSource, number | undefined>): number {
-    throw new Error('Method not implemented.');
+  public Sum(selector?: IQuerySelector<TSource, number>): number {
+    if (!this.Any()) { return 0; }
+
+    return this.Select(selector || (Number))
+      .Aggregate<number, number>((acc, item) => (acc + item));
   }
 
-  public Min<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined {
-    throw new Error('Method not implemented.');
+  public Min<TResult>(selector?: IQuerySelector<TSource, TResult>): TResult | undefined {
+    if (!this.Any()) { return undefined; }
+
+    return this.Select(selector || ((v) => v as any as TResult))
+      .Aggregate((acc, item) => ((acc < item) ? acc : item));
   }
 
-  public Max<TResult>(selector: IQuerySelector<TSource, TResult>): TResult | undefined {
-    throw new Error('Method not implemented.');
+  public Max<TResult>(selector?: IQuerySelector<TSource, TResult>): TResult | undefined {
+    if (!this.Any()) { return undefined; }
+
+    return this.Select(selector || ((v) => v as any as TResult))
+      .Aggregate((acc, item) => ((acc > item) ? acc : item));
   }
 
-  public Average(selector: IQuerySelector<TSource, number | undefined>): number {
-    throw new Error('Method not implemented.');
+  public Average(selector?: IQuerySelector<TSource, number>): number | undefined {
+    if (!this.Any()) { return undefined; }
+
+    return this.Select(selector || (Number))
+      .Aggregate(
+        (acc, item) => (acc + item),
+        0,
+        (acc, idx) => acc / (idx + 1)
+      );
   }
 
   public Aggregate<TAccumulate, TResult>(
-    func: (accumulator: TAccumulate, element: TSource) => TAccumulate,
+    func: (accumulator: TAccumulate, element: TSource, index: number) => TAccumulate,
     seed?: TAccumulate | undefined,
     selector?: IQuerySelector<TAccumulate, TResult> | undefined
   ): TResult {
-    throw new Error('Method not implemented.');
+    AssertArgument(func);
+
+    // Ensure the selector
+    const finalConverter: IQuerySelector<TAccumulate, TResult> = selector || ((v) => v as any as TResult);
+
+    // Get the source iterator
+    const iter: IndexedIterator<TSource> = this.IITer();
+
+    // Get the first value
+    let iterResult: IteratorResultWithIndex<TSource> = iter.next();
+    let idx = -1;
+
+    // Create the accumulator
+    let accumulator: TAccumulate | undefined;
+    if (seed !== undefined) {
+      // Seed is defined
+      accumulator = seed;
+    } else {
+      // If the source sequence is empty, and no seed, invalid operation
+      if (iterResult.done) { throw new Error('InvalidOperationException'); }
+
+      // Start with the first element
+      accumulator = iterResult.value as any as TAccumulate;
+
+      // Move iterator to second element
+      ++idx;
+      iterResult = iter.next();
+    }
+
+    // Accumulate
+    while (!iterResult.done) {
+      accumulator = func(accumulator, iterResult.value, ++idx);
+      iterResult = iter.next();
+    }
+
+    return finalConverter(accumulator, idx);
   }
 
   /**
