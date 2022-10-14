@@ -27,7 +27,7 @@
   "devDependencies": {
     "typescript": "^2.9.2",
     "uglify-js": "^3.4.4",
-    "uglifyjs-folder": "^1.5.1"
+    "uglifyjs-folder": "^1.5.4"
   },
   "dependencies": {}
 }
